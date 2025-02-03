@@ -1,33 +1,75 @@
-import AcmeLogo from '@/app/ui/acme-logo';
-import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import Link from 'next/link';
+import React from "react";
+import Link from "next/link";
+import Image from "next/image";
 
-export default function Page() {
+const BlogHomepage = () => {
+  // Sample recent blog posts data - replace with your actual data
+  const recentPosts = [
+    {
+      title: "Nature is Dissipative",
+      excerpt:
+        "Waste may mean different to different people. To vegans, rearing animals for food is a waste (of life); to non-vegans, life living as a vegan itself is a waste...",
+      date: "February 3, 2025",
+      slug: "nature-is-dissipative",
+      imageUrl: "/goghcafe.jpeg",
+    },
+    // Add more posts as needed
+  ];
+
   return (
-    <main className="flex min-h-screen flex-col p-6">
-      <div className="flex h-20 shrink-0 items-end rounded-lg bg-blue-500 p-4 md:h-52">
-        {/* <AcmeLogo /> */}
-      </div>
-      <div className="mt-4 flex grow flex-col gap-4 md:flex-row">
-        <div className="flex flex-col justify-center gap-6 rounded-lg bg-gray-50 px-6 py-10 md:w-2/5 md:px-20">
-          <p className={`text-xl text-gray-800 md:text-3xl md:leading-normal`}>
-            <strong>Welcome to Acme.</strong> This is the example for the{' '}
-            <a href="https://nextjs.org/learn/" className="text-blue-500">
-              Next.js Learn Course
-            </a>
-            , brought to you by Vercel.
-          </p>
-          <Link
-            href="/login"
-            className="flex items-center gap-5 self-start rounded-lg bg-blue-500 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-400 md:text-base"
-          >
-            <span>Log in</span> <ArrowRightIcon className="w-5 md:w-6" />
-          </Link>
+    <div className="min-h-screen bg-gray-50 py-12 px-2 sm:px-6 lg:px-8">
+      {/* Introduction Section */}
+      <div className="relative mt-4 max-w-3xl mx-auto rounded-2xl p-[2px] bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500">
+        <div className="bg-white rounded-xl p-4 sm:p-12">
+          <div className="flex flex-col items-center text-center mb-8">
+            <Image
+              src="/me.jpeg"
+              alt="Blog Author"
+              width={150}
+              height={150}
+              className="rounded-full mb-6"
+            />
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Welcome to My Blog
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl">
+              Here, I write about life, technology, and the beautiful chaos that
+              exists in between. Join me as we explore the complexities of our
+              world through thoughtful analysis and personal stories.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center justify-center p-6 md:w-3/5 md:px-28 md:py-12">
-          {/* Add Hero Images Here */}
+      </div>
+
+      {/* Recent Posts Section */}
+      <div className="relative mt-12 max-w-3xl mx-auto rounded-2xl p-[2px] bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500">
+        <div className="bg-white rounded-xl p-4 sm:p-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">
+            Recent Posts
+          </h2>
+          <div className="space-y-8">
+            {recentPosts.map((post, index) => (
+              <article key={index} className="group">
+                <Link href={`/blog/${post.slug}`} className="block">
+                  
+                  <div className="space-y-2">
+                    <span className="text-sm text-gray-500">{post.date}</span>
+                    <h3 className="text-2xl font-bold text-gray-900 group-hover:text-orange-500 transition-colors">
+                      {post.title}
+                    </h3>
+                    <p className="text-gray-600 line-clamp-3">{post.excerpt}</p>
+                    <span className="inline-block text-orange-500 font-medium group-hover:text-orange-600 transition-colors">
+                      Read more →
+                    </span>
+                  </div>
+                </Link>
+              </article>
+            ))}
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   );
-}
+};
+
+export default BlogHomepage;
