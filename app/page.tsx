@@ -13,6 +13,13 @@ const BlogHomepage = () => {
       slug: "nature-is-dissipative",
       imageUrl: "/goghcafe.jpeg",
     },
+    {
+      title: "Wait or Leave",
+      excerpt:
+        "A man is waiting for his friend at a restaurant. He is waiting for 30 minutes and he is considering leaving. He is faced with a question - wait or leave?",
+      date: "February 3, 2025",
+      slug: "wait-or-leave",
+    }
     // Add more posts as needed
   ];
 

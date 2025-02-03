@@ -1,14 +1,12 @@
 import Image from "next/image";
+import BlogContainer from "../blog-container";
 
 const BlogPost = () => {
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-2 sm:px-6 lg:px-8">
-      <div className="relative mt-4 max-w-3xl mx-auto rounded-2xl p-[3px] bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500">
-        <div className="bg-white rounded-xl p-4 sm:p-12">
-          <article className="prose prose-lg max-w-none">
-            <h1 className="text-4xl font-bold mb-8 text-gray-900">
-              Nature is Dissipative
-            </h1>
+    <BlogContainer>
+      <h1 className="text-4xl font-bold mb-8 text-gray-900">
+        Nature is Dissipative
+      </h1>
 
             <div className="space-y-6 text-gray-700 text-lg">
               <p>
@@ -87,12 +85,9 @@ const BlogPost = () => {
                 some part of you. This is a firefly in the dark.
               </p>
 
-              <p className="text-center italic">The End</p>
-            </div>
-          </article>
-        </div>
+      <p className="text-center italic">The End</p>
       </div>
-    </div>
+    </BlogContainer>
   );
 };
 
