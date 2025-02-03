@@ -16,13 +16,13 @@ const Header = () => {
 
             <div className="flex items-center gap-6">
               <Link
-                href="/about"
+                href="/"
                 className="text-gray-600 hover:text-orange-500 transition-colors font-medium"
               >
                 about
               </Link>
               <Link
-                href="/now"
+                href="/blog/now"
                 className="text-gray-600 hover:text-orange-500 transition-colors font-medium"
               >
                 now
