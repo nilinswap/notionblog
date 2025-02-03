@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 
 const BlogListing = () => {
   // Sample blog posts data - replace with your actual blog post collection

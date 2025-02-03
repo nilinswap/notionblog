@@ -16,22 +16,22 @@ const Header = () => {
 
             <div className="flex items-center gap-6">
               <Link
-                href="/"
+                href="https://one.nilinswap.com"
                 className="text-gray-600 hover:text-orange-500 transition-colors font-medium"
               >
-                about
+                ReadLog
               </Link>
               <Link
                 href="/blog/now"
                 className="text-gray-600 hover:text-orange-500 transition-colors font-medium"
               >
-                now
+                Now
               </Link>
               <Link
                 href="/blog"
                 className="text-gray-600 hover:text-orange-500 transition-colors font-medium"
               >
-                blog
+                Blogs
               </Link>
             </div>
           </nav>

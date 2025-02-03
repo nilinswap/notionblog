@@ -11,12 +11,13 @@ export default function Now() {
         </p>
         <p>
           I am currently working on my writing. I am reading (actually, trying
-          to read) two books - 'Freakonomics' and 'Thinking Fast and Slow.'
+          to read) two books - &apos;Freakonomics&apos; and &apos;Thinking Fast
+          and Slow.&apos;
         </p>
-        <p>I am learning to play 'I Giorni' and mariage D'amour.</p>
+        <p>I am learning to play &apos;I Giorni&apos; and mariage D&apos;amour.</p>
         <p>
-          I like to meet people so I am using this time to connect with a lot
-          of my lost friends. And I am thinking.
+          I like to meet people so I am using this time to connect with a lot of
+          my lost friends. And I am thinking.
         </p>
       </div>
     </BlogContainer>
