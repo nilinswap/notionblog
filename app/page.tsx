@@ -6,6 +6,13 @@ const BlogHomepage = () => {
   // Sample recent blog posts data - replace with your actual data
   const recentPosts = [
     {
+      title: "Contrarian",
+      excerpt: "Where does the whole world disagree with me?",
+      date: "February 7, 2025",
+      slug: "contrarian",
+      tags: ["philosophy", "life", "creativity"],
+    },
+    {
       title: "Nature is Dissipative",
       excerpt:
         "Waste may mean different to different people. To vegans, rearing animals for food is a waste (of life); to non-vegans, life living as a vegan itself is a waste...",
@@ -19,7 +26,7 @@ const BlogHomepage = () => {
         "A man is waiting for his friend at a restaurant. He is waiting for 30 minutes and he is considering leaving. He is faced with a question - wait or leave?",
       date: "February 3, 2025",
       slug: "wait-or-leave",
-    }
+    },
     // Add more posts as needed
   ];
 

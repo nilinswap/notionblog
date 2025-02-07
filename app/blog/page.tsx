@@ -5,6 +5,14 @@ const BlogListing = () => {
   // Sample blog posts data - replace with your actual blog post collection
   const blogPosts = [
     {
+      title: "Contrarian",
+      excerpt:
+        "Where does the whole world disagree with me?",
+      date: "February 7, 2025",
+      slug: "contrarian",
+      tags: ["philosophy", "life", "creativity"],
+    },
+    {
       title: "Nature is Dissipative",
       excerpt:
         "Waste may mean different to different people. To vegans, rearing animals for food is a waste (of life); to non-vegans, life living as a vegan itself is a waste...",
