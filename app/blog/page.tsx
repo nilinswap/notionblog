@@ -6,11 +6,17 @@ const BlogListing = () => {
   const blogPosts = [
     {
       title: "Contrarian",
-      excerpt:
-        "Where does the whole world disagree with me?",
+      excerpt: "Where does the whole world disagree with me?",
       date: "February 7, 2025",
       slug: "contrarian",
       tags: ["philosophy", "life", "creativity"],
+    },
+    {
+      title: "Pattern Detection in Machine Learning",
+      excerpt: "Machine Learning is just about pattern detection",
+      date: "February 8, 2025",
+      slug: "ml",
+      tags: ["technology", "ML", "science"],
     },
     {
       title: "Nature is Dissipative",
@@ -27,7 +33,7 @@ const BlogListing = () => {
       date: "February 3, 2025",
       slug: "wait-or-leave",
       tags: ["philosophy", "life", "creativity"],
-    }
+    },
     // Add more blog posts as needed
   ];
 

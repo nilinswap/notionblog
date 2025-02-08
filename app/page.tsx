@@ -13,19 +13,19 @@ const BlogHomepage = () => {
       tags: ["philosophy", "life", "creativity"],
     },
     {
+      title: "Pattern Detection in Machine Learning",
+      excerpt: "Machine Learning is just about pattern detection",
+      date: "February 8, 2025",
+      slug: "ml",
+      tags: ["technology", "ML", "science"],
+    },
+    {
       title: "Nature is Dissipative",
       excerpt:
         "Waste may mean different to different people. To vegans, rearing animals for food is a waste (of life); to non-vegans, life living as a vegan itself is a waste...",
       date: "February 3, 2025",
       slug: "nature-is-dissipative",
       imageUrl: "/goghcafe.jpeg",
-    },
-    {
-      title: "Wait or Leave",
-      excerpt:
-        "A man is waiting for his friend at a restaurant. He is waiting for 30 minutes and he is considering leaving. He is faced with a question - wait or leave?",
-      date: "February 3, 2025",
-      slug: "wait-or-leave",
     },
     // Add more posts as needed
   ];
