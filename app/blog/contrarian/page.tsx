@@ -66,7 +66,7 @@ export default function Contrarian() {
             No Pain, Infinite Gain
           </h2>
           <p>
-            While this is true at a much ground-level, it is easy to confuse sacrifice with being bold. As a child, I grew up thinking that I need to be slogging and
+            While No-pain-no-gain is true at a much ground-level, it is easy to confuse sacrifice with being bold. As a child, I grew up thinking that I need to be slogging and
             forcing myself to grind to get there. Or otherwise, I am not trying
             well enough. Unlearnt this the hard way that I{" "}
             <strong>need to enjoy the journey</strong> to get there. If I can
