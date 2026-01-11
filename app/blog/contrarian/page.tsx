@@ -39,6 +39,8 @@ export default function Contrarian() {
             they can actually do great things&quot; - is so cliche&apos;. Those who
             slog for humility often miss out on great returns which requires one
             to get of that slog-race and take bold actions.
+            Has it ever happened that you saw an arrogant person blabbering about how good he is and somewhere know, he will topple on the floor soon - then see them again and see them doing better? 
+            - well, you wer right, he did topple. 
           </p>
         </div>
         <div>
@@ -64,7 +66,7 @@ export default function Contrarian() {
             No Pain, No Gain
           </h2>
           <p>
-            While this is true at a much grond-level, it is easy to confuse sacrifice with being bold. As a child, I grew up thinking that I need to be slogging and
+            While this is true at a much ground-level, it is easy to confuse sacrifice with being bold. As a child, I grew up thinking that I need to be slogging and
             forcing myself to grind to get there. Or otherwise, I am not trying
             well enough. Unlearnt this the hard way that I{" "}
             <strong>need to enjoy the journey</strong> to get there. If I can
