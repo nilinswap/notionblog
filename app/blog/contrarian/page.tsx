@@ -14,10 +14,13 @@ export default function Contrarian() {
           </h2>
           <p>
             Most sales books and courses teach you to be consultative, helpful,
-            and value adding. While that holds true at at a much higher-level, at ground-level, you are always fighting against inertia.
-            Most people don't want to change. They are comfortable with the
-            status-quo. They don't want to take risks with a new product, even when they realise that they don't like the current product. One needs to jerk them out into action.
-            That is why there are flash sales, limited period offers, and discounts etc. 
+            and value adding. While that holds true at at a much higher-level,
+            at ground-level, you are always fighting against inertia. Most
+            people don&apos;t want to change. They are comfortable with the
+            status-quo. They don&apos;t want to take risks with a new product,
+            even when they realise that they don&apos;t like the current
+            product. One needs to jerk them out into action. That is why there
+            are flash sales, limited period offers, and discounts etc.
           </p>
         </div>
         <div>
@@ -25,10 +28,17 @@ export default function Contrarian() {
             Humility is overrated
           </h2>
           <p>
-            I think humility is one of the most important virtues to have and is often seriously lacking in heros of many failure stories. 
-            But, I think it is also a serious reason for a lot of mediocrity. While, we see lack of humility in a lot of failure stories and feel good.
-            but most successful people (even when they don't show it), have a strong sense of pride and confidence in themselves (often to the point of arrogance). Similarily, most of common people are humble to a fault.
-            "Only if one thinks that they are capable of great things, they can actually do great things" - is so cliche'. Those who slog for humility often miss out on great returns which requires one to get of that slog-race and take bold actions. 
+            I think humility is one of the most important virtues to have and is
+            often seriously lacking in heros of many failure stories. But, I
+            think it is also a serious reason for a lot of mediocrity. While, we
+            see lack of humility in a lot of failure stories and feel good. but
+            most successful people (even when they don&apos;t show it), have a
+            strong sense of pride and confidence in themselves (often to the
+            point of arrogance). Similarily, most of common people are humble to
+            a fault. &quot;Only if one thinks that they are capable of great things,
+            they can actually do great things&quot; - is so cliche&apos;. Those who
+            slog for humility often miss out on great returns which requires one
+            to get of that slog-race and take bold actions.
           </p>
         </div>
         <div>
