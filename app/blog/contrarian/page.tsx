@@ -63,7 +63,7 @@ export default function Contrarian() {
 
         <div>
           <h2 className="text-2xl font-bold mb-4 text-gray-900">
-            No Pain, No Gain
+            No Pain, Infinite Gain
           </h2>
           <p>
             While this is true at a much ground-level, it is easy to confuse sacrifice with being bold. As a child, I grew up thinking that I need to be slogging and
