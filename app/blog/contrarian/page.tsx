@@ -61,10 +61,10 @@ export default function Contrarian() {
 
         <div>
           <h2 className="text-2xl font-bold mb-4 text-gray-900">
-            If I can slog my way through, then I am aiming too low
+            No Pain, No Gain
           </h2>
           <p>
-            As a child, I grew up thinking that I need to be slogging and
+            While this is true at a much grond-level, it is easy to confuse sacrifice with being bold. As a child, I grew up thinking that I need to be slogging and
             forcing myself to grind to get there. Or otherwise, I am not trying
             well enough. Unlearnt this the hard way that I{" "}
             <strong>need to enjoy the journey</strong> to get there. If I can
