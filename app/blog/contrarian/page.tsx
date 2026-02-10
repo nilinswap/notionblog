@@ -30,7 +30,7 @@ export default function Contrarian() {
             breakdown of three things — Knowing what matters (and hence what to
             do), figuring out how to do, and to just &quot;do.&quot; Here is the
             meat — for a player who is playing seriously, he almost always has
-            some idea about what he should do. Most of the times, he sees 100
+            some idea about what he should do. Most people see 100s of
             possible ways and remains confused on what to choose. A smart person
             is able to sift through the sea of options and find 2-3 logical
             obvious moves. This is only possible if he is `focused` and
