@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 type NotionAnnotations = {
   code?: boolean;
@@ -64,7 +65,7 @@ function renderCalloutIcon(icon: unknown) {
   }
   const iconUrl = typedIcon.type === "external" ? typedIcon.external?.url : typedIcon.file?.url;
   if (iconUrl) {
-    return <img src={iconUrl} alt="" className="h-6 w-6 object-contain" />;
+    return <Image width={240} height={240} src={iconUrl} alt="" />;
   }
   return null;
 }
@@ -202,7 +203,7 @@ function NotionImage({ value }: { value: NotionRecord }) {
   return (
     <figure className="space-y-2">
       <div className="overflow-hidden rounded-xl bg-slate-100">
-        <img src={src} alt={caption || "Notion image"} className="w-full object-contain" />
+        <Image src={src} alt={caption || "Notion image"} className="w-full object-contain" />
       </div>
       {caption ? <figcaption className="text-sm text-slate-500">{caption}</figcaption> : null}
     </figure>
