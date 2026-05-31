@@ -266,7 +266,12 @@ export async function getBlockTree(blockId: string, pageSize = 100): Promise<Not
     const blocks = await getBlockChildren(blockId, pageSize);
 
     return Promise.all(
-        blocks.map(async (blockItem) => {
+        blocks
+            .filter((blockItem) => {
+                const block = blockItem as NotionBlockWithChildren & { in_trash?: boolean; archived?: boolean };
+                return !block.in_trash && !block.archived;
+            })
+            .map(async (blockItem) => {
             const block = blockItem as NotionBlockWithChildren;
             if (!block.has_children) {
                 return block;

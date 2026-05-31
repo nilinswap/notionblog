@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 
 type NotionAnnotations = {
   code?: boolean;
@@ -51,10 +50,34 @@ function getBlockValue(block: NotionBlock) {
 }
 
 function getMediaUrl(value: NotionRecord) {
+  if (!value || typeof value !== "object") return undefined;
+
   if (value.type === "external") {
-    return (value.external as { url?: string })?.url;
+    const external = value.external as { url?: string } | undefined;
+    return typeof external?.url === "string" ? external.url : undefined;
   }
-  return (value.file as { url?: string })?.url;
+
+  if (value.type === "file") {
+    const file = value.file as { url?: string } | undefined;
+    return typeof file?.url === "string" ? file.url : undefined;
+  }
+
+  // Some responses omit the type discriminator but still include file/external.
+  const fileUrl = (value.file as { url?: string } | undefined)?.url;
+  if (typeof fileUrl === "string") return fileUrl;
+
+  const externalUrl = (value.external as { url?: string } | undefined)?.url;
+  if (typeof externalUrl === "string") return externalUrl;
+
+  return undefined;
+}
+
+/** Native img — Notion file URLs are signed, short-lived, and vary by host. */
+function NotionMediaImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} className={className} loading="lazy" decoding="async" />
+  );
 }
 
 function renderCalloutIcon(icon: unknown) {
@@ -65,7 +88,7 @@ function renderCalloutIcon(icon: unknown) {
   }
   const iconUrl = typedIcon.type === "external" ? typedIcon.external?.url : typedIcon.file?.url;
   if (iconUrl) {
-    return <Image width={240} height={240} src={iconUrl} alt="" />;
+    return <NotionMediaImage src={iconUrl} alt="" className="h-6 w-6 object-contain" />;
   }
   return null;
 }
@@ -199,11 +222,17 @@ function NotionDivider() {
 function NotionImage({ value }: { value: NotionRecord }) {
   const src = getMediaUrl(value);
   const caption = richTextToPlain((value.caption as NotionRichText) || "");
-  if (!src) return null;
+  if (!src) {
+    return (
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+        Image unavailable (missing URL from Notion)
+      </div>
+    );
+  }
   return (
     <figure className="space-y-2">
       <div className="overflow-hidden rounded-xl bg-slate-100">
-        <Image src={src} alt={caption || "Notion image"} className="w-full object-contain" />
+        <NotionMediaImage src={src} alt={caption || "Notion image"} className="w-full object-contain" />
       </div>
       {caption ? <figcaption className="text-sm text-slate-500">{caption}</figcaption> : null}
     </figure>
