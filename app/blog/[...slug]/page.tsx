@@ -6,7 +6,7 @@ import { getBlogPostBySlug, getBlogPageProps } from "@/lib/notion-api";
 export const dynamic = "force-dynamic";
 
 export default async function BlogPostPage(props: unknown) {
-  const params = (props as { params?: { slug?: string | string[] } }).params;
+  const params = await (props as { params: Promise<{ slug?: string | string[] }> }).params;
   const slug = Array.isArray(params?.slug) ? params.slug.join("/") : params?.slug || "";
   const post = await getBlogPostBySlug(slug);
 

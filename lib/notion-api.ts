@@ -154,6 +154,7 @@ export async function queryBlogPosts() {
 }
 
 export async function getBlogPostBySlug(slug: string) {
+    console.log("Looking for blog post with slug:", slug);
     const datasourceId = process.env.NOTION_BLOG_DATASOURCE_ID;
     const databaseId = process.env.NOTION_BLOG_DATABASE_ID;
     if (databaseId) {
@@ -181,6 +182,8 @@ export async function getBlogPostBySlug(slug: string) {
             );
             return pageSlug === slug;
         });
+
+        console.log("Queried Notion data source for slug:", slug, "Found page:", result ? getPropertyValue(result, "Title") : "None");
 
         if (result) {
             return result;
