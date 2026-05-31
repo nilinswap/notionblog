@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function BlogListing() {
   const posts = await queryBlogPosts();
-  const isConfigured = Boolean(process.env.NOTION_BLOG_DATABASE_ID);
+  const isConfigured = Boolean(process.env.NOTION_BLOG_DATASOURCE_ID);
 
   return (
     <BlogContainer>
@@ -14,10 +14,8 @@ export default async function BlogListing() {
         <div className="space-y-3 text-center">
           <h1 className="text-4xl font-bold text-gray-900">Blog Posts</h1>
           <p className="text-gray-600">
-            Your Notion workspace is now powering the blog listing. Use the
-            database property
-            <span className="font-semibold"> Slug </span> or{" "}
-            <span className="font-semibold">Path</span> to control each URL.
+            Top-level posts from your Notion database. Sub-items use hierarchical URLs
+            (title plus last 4 characters of the page id), like Notion page links.
           </p>
         </div>
 
@@ -27,8 +25,8 @@ export default async function BlogListing() {
               No Notion blog database configured yet.
             </p>
             <p className="mt-2 text-sm text-orange-800">
-              Add <code>NOTION_BLOG_DATABASE_ID</code> to your <code>.env</code>{" "}
-              and expose the correct Notion database ID for your blog posts.
+              Add <code>NOTION_BLOG_DATASOURCE_ID</code> to your <code>.env</code>{" "}
+              and expose the correct Notion data source ID for your blog posts.
             </p>
           </div>
         ) : posts.length === 0 ? (

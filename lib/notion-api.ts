@@ -1,3 +1,4 @@
+import { cache } from "react";
 import notion from "./notion";
 
 type NotionAnnotations = {
@@ -24,6 +25,7 @@ type NotionProperty =
     | { type: "multi_select"; multi_select?: Array<{ name?: string }> }
     | { type: "date"; date?: { start?: string } }
     | { type: "formula"; formula?: { string?: string; number?: number } }
+    | { type: "relation"; relation?: Array<{ id?: string }> }
     | Record<string, unknown>;
 
 type NotionPage = {
@@ -41,6 +43,25 @@ type NotionQueryResponse = {
 type NotionSearchResponse = {
     results: NotionPage[];
 };
+
+export type BlogPostSummary = {
+    id: string;
+    title: string;
+    slug: string;
+    segmentSlug: string;
+    excerpt: string;
+    date: string | null;
+    tags: string[];
+    parentId: string | null;
+};
+
+type BlogIndex = {
+    byId: Map<string, BlogPostSummary>;
+    bySlug: Map<string, NotionPage>;
+    roots: BlogPostSummary[];
+};
+
+const PARENT_PROPERTY_NAMES = ["Parent item", "Parent Item", "Parent"];
 
 function richTextToString(richText: unknown) {
     if (!Array.isArray(richText)) return "";
@@ -64,6 +85,18 @@ function normalizeSlug(value: string) {
         .replace(/^-|-$/g, "");
 }
 
+function pageIdWithoutDashes(pageId: string) {
+    return pageId.replace(/-/g, "");
+}
+
+/** Notion-style segment: title slug + hyphen + last 4 hex chars of page id */
+export function pageSegmentSlug(page: NotionPage) {
+    const title = (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "untitled") as string;
+    const titleSlug = normalizeSlug(title) || "untitled";
+    const suffix = pageIdWithoutDashes(page.id).slice(-4);
+    return `${titleSlug}-${suffix}`;
+}
+
 function getPropertyValue(page: NotionPage, propertyName: string) {
     const property = page.properties?.[propertyName] as NotionProperty | undefined;
     if (!property || typeof property !== "object") return null;
@@ -81,10 +114,123 @@ function getPropertyValue(page: NotionPage, propertyName: string) {
             return (property as { date?: { start?: string } }).date?.start || null;
         case "formula":
             return (property as { formula?: { string?: string; number?: number } }).formula?.string || (property as { formula?: { string?: string; number?: number } }).formula?.number || null;
+        case "relation": {
+            const relation = (property as { relation?: Array<{ id?: string }> }).relation;
+            if (!relation?.length) return null;
+            return relation[0]?.id || null;
+        }
         default:
             return null;
     }
 }
+
+function getParentPropertyName(page: NotionPage) {
+    const configured = process.env.NOTION_PARENT_PROPERTY;
+    if (configured && page.properties?.[configured]) {
+        return configured;
+    }
+
+    for (const name of PARENT_PROPERTY_NAMES) {
+        if (page.properties?.[name]) return name;
+    }
+
+    const relationParent = Object.entries(page.properties || {}).find(([name, prop]) => {
+        const typed = prop as NotionProperty;
+        return typed?.type === "relation" && /parent/i.test(name);
+    });
+
+    if (relationParent) return relationParent[0];
+
+    return Object.keys(page.properties || {}).find((name) => /parent\s*item/i.test(name)) || null;
+}
+
+function getParentPageId(page: NotionPage) {
+    const propertyName = getParentPropertyName(page);
+    if (!propertyName) return null;
+    return getPropertyValue(page, propertyName) as string | null;
+}
+
+function pageToSummary(page: NotionPage, slug: string): BlogPostSummary {
+    return {
+        id: page.id,
+        title: (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "Untitled") as string,
+        slug,
+        segmentSlug: pageSegmentSlug(page),
+        excerpt: (getPropertyValue(page, "Excerpt") as string) || "",
+        date: (getPropertyValue(page, "Published") as string) || (getPropertyValue(page, "Date") as string) || null,
+        tags: (getPropertyValue(page, "Tags") as string[]) || [],
+        parentId: getParentPageId(page),
+    };
+}
+
+async function queryAllDatasourcePages() {
+    const dataSourceId = process.env.NOTION_BLOG_DATASOURCE_ID;
+    if (!dataSourceId) {
+        return [];
+    }
+
+    const pages: NotionPage[] = [];
+    let cursor: string | undefined = undefined;
+
+    do {
+        const response = await notion.dataSources.query({
+            data_source_id: dataSourceId,
+            sorts: [
+                {
+                    property: "Published",
+                    direction: "descending",
+                },
+            ],
+            start_cursor: cursor,
+        });
+        const typedResponse = response as unknown as NotionQueryResponse;
+        pages.push(...typedResponse.results);
+        cursor = typedResponse.next_cursor || undefined;
+    } while (cursor);
+
+    return pages;
+}
+
+function buildHierarchicalSlug(pageId: string, segmentById: Map<string, string>, parentById: Map<string, string | null>) {
+    const segments: string[] = [];
+    const visited = new Set<string>();
+    let currentId: string | null = pageId;
+
+    while (currentId) {
+        if (visited.has(currentId)) break;
+        visited.add(currentId);
+        const segment = segmentById.get(currentId);
+        if (!segment) break;
+        segments.unshift(segment);
+        currentId = parentById.get(currentId) || null;
+    }
+
+    return segments.join("/");
+}
+
+const getBlogIndex = cache(async (): Promise<BlogIndex> => {
+    const pages = await queryAllDatasourcePages();
+    const parentById = new Map<string, string | null>();
+    const segmentById = new Map<string, string>();
+
+    for (const page of pages) {
+        parentById.set(page.id, getParentPageId(page));
+        segmentById.set(page.id, pageSegmentSlug(page));
+    }
+
+    const byId = new Map<string, BlogPostSummary>();
+    const bySlug = new Map<string, NotionPage>();
+
+    for (const page of pages) {
+        const slug = buildHierarchicalSlug(page.id, segmentById, parentById);
+        byId.set(page.id, pageToSummary(page, slug));
+        bySlug.set(slug, page);
+    }
+
+    const roots = [...byId.values()].filter((post) => !post.parentId);
+
+    return { byId, bySlug, roots };
+});
 
 export async function getPage(pageId: string) {
     return await notion.pages.retrieve({ page_id: pageId });
@@ -109,81 +255,50 @@ export async function getBlockChildren(blockId: string, pageSize = 100) {
 }
 
 export async function queryBlogPosts() {
-    const databaseId = process.env.NOTION_BLOG_DATABASE_ID;
-    const dataSourceId = process.env.NOTION_BLOG_DATASOURCE_ID;
-    if (!databaseId) {
-        return [];
-    }
+    const { roots } = await getBlogIndex();
+    return roots;
+}
 
-    // const response = await notion.databases.query({
-    //     database_id: databaseId,
-    //     sorts: [
-    //         {
-    //             property: "published",
-    //             direction: "descending",
-    //         },
-    //     ],
-    // });
-    console.log("Querying Notion data source with ID:", dataSourceId);
-    const response = await notion.dataSources.query({
-        data_source_id: dataSourceId!,
-        // filter: {
-        //     property: "Status",
-        //     select: { equals: "Done" }
-        // },
-        // sorts: [
-        //     {
-        //         property: "Created",
-        //         direction: "descending"
-        //     }
-        // ]
-    })
-    const typedResponse = response as unknown as NotionQueryResponse;
-
-    return typedResponse.results.map((page) => ({
-        id: page.id,
-        title: (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "Untitled") as string,
-        slug:
-            normalizeSlug(
-                (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || getPropertyValue(page, "Title") || "") as string,
-            ) || page.id,
-        excerpt: (getPropertyValue(page, "Excerpt") as string) || "",
-        date: (getPropertyValue(page, "Published") as string) || (getPropertyValue(page, "Date") as string) || null,
-        tags: (getPropertyValue(page, "Tags") as string[]) || [],
-    }));
+export async function getChildBlogPosts(parentPageId: string) {
+    const { byId } = await getBlogIndex();
+    return [...byId.values()].filter((post) => post.parentId === parentPageId);
 }
 
 export async function getBlogPostBySlug(slug: string) {
-    console.log("Looking for blog post with slug:", slug);
+    const normalizedSlug = normalizeSlug(slug);
+    const { bySlug } = await getBlogIndex();
+    const fromIndex = bySlug.get(normalizedSlug);
+    if (fromIndex) {
+        return fromIndex;
+    }
+
     const datasourceId = process.env.NOTION_BLOG_DATASOURCE_ID;
-    const databaseId = process.env.NOTION_BLOG_DATABASE_ID;
-    if (databaseId) {
-        const response = await (notion as any).dataSources.query({
-            data_source_id: datasourceId!,
+    if (datasourceId) {
+        const lastSegment = normalizedSlug.split("/").pop() || normalizedSlug;
+        const response = await (notion as { dataSources: { query: (args: unknown) => Promise<unknown> } }).dataSources.query({
+            data_source_id: datasourceId,
             filter: {
                 or: [
                     {
                         property: "Slug",
-                        rich_text: { equals: slug },
+                        rich_text: { equals: lastSegment },
                     },
                     {
                         property: "Title",
-                        title: { equals: slug },
+                        title: { equals: lastSegment },
                     },
                 ],
             },
             page_size: 10,
         });
-        const typedResponse = response as unknown as NotionQueryResponse;
+        const typedResponse = response as NotionQueryResponse;
 
         const result = typedResponse.results.find((page) => {
             const pageSlug = normalizeSlug(
-                (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || getPropertyValue(page, "Title") || "") as string,
+                (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || pageSegmentSlug(page) || "") as string,
             );
-            return pageSlug === slug;
+            return pageSlug === lastSegment || pageSlug === normalizedSlug;
         });
-
-        console.log("Queried Notion data source for slug:", slug, "Found page:", result ? getPropertyValue(result, "Title") : "None");
 
         if (result) {
             return result;
@@ -191,18 +306,18 @@ export async function getBlogPostBySlug(slug: string) {
     }
 
     const searchResponse = await notion.search({
-        query: slug,
+        query: normalizedSlug,
         filter: { property: "object", value: "page" },
     });
     const typedSearch = searchResponse as NotionSearchResponse;
 
     return typedSearch.results.find((page) => {
         const pageSlug = normalizeSlug(
-            (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || getPropertyValue(page, "Title") || "") as string,
+            (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || pageSegmentSlug(page) || "") as string,
         );
-        if (pageSlug === slug) return true;
+        if (pageSlug === normalizedSlug) return true;
         const title = normalizeSlug((getPropertyValue(page, "Title") || "") as string);
-        return title === slug;
+        return title === normalizedSlug;
     });
 }
 
@@ -210,6 +325,8 @@ export async function getBlogPageProps(pageId: string) {
     const page = await getPage(pageId);
     const blocks = await getBlockChildren(pageId);
     const typedPage = page as NotionPage;
+    const { byId } = await getBlogIndex();
+    const summary = byId.get(pageId);
 
     return {
         page,
@@ -218,5 +335,6 @@ export async function getBlogPageProps(pageId: string) {
         excerpt: (getPropertyValue(typedPage, "Excerpt") as string) || "",
         date: (getPropertyValue(typedPage, "Published") as string) || (getPropertyValue(typedPage, "Date") as string) || null,
         tags: (getPropertyValue(typedPage, "Tags") as string[]) || [],
+        slug: summary?.slug || pageSegmentSlug(typedPage),
     };
 }

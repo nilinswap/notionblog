@@ -1,7 +1,7 @@
 import Link from "next/link";
 import BlogContainer from "../blog-container";
 import { NotionBlockList } from "@/lib/notion-renderer";
-import { getBlogPostBySlug, getBlogPageProps } from "@/lib/notion-api";
+import { getBlogPostBySlug, getBlogPageProps, getChildBlogPosts } from "@/lib/notion-api";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +26,12 @@ export default async function BlogPostPage(props: unknown) {
     );
   }
 
-  const pageProps = await getBlogPageProps(post.id);
+  const [pageProps, children] = await Promise.all([
+    getBlogPageProps(post.id),
+    getChildBlogPosts(post.id),
+  ]);
   const date = pageProps.date ? new Date(pageProps.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : null;
+  const parentSlug = pageProps.slug.includes("/") ? pageProps.slug.split("/").slice(0, -1).join("/") : null;
 
   return (
     <BlogContainer>
@@ -39,14 +43,44 @@ export default async function BlogPostPage(props: unknown) {
               <h1 className="text-4xl font-bold text-slate-900">{pageProps.title}</h1>
               {date ? <p className="mt-2 text-sm text-slate-500">Published {date}</p> : null}
             </div>
-            <Link href="/blog" className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-slate-700 hover:bg-slate-200">
-              Back to blog
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              {parentSlug ? (
+                <Link href={`/blog/${parentSlug}`} className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-slate-700 hover:bg-slate-200">
+                  Up one level
+                </Link>
+              ) : null}
+              <Link href="/blog" className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-slate-700 hover:bg-slate-200">
+                All posts
+              </Link>
+            </div>
           </div>
           {pageProps.excerpt ? <p className="text-slate-600">{pageProps.excerpt}</p> : null}
         </div>
 
         <NotionBlockList blocks={pageProps.blocks} />
+
+        {children.length > 0 ? (
+          <section className="border-t border-slate-200 pt-8">
+            <h2 className="text-2xl font-bold text-slate-900">In this section</h2>
+            <ul className="mt-4 space-y-3">
+              {children.map((child) => (
+                <li key={child.id}>
+                  <Link
+                    href={`/blog/${child.slug}`}
+                    className="group flex flex-col rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 transition hover:border-orange-300 hover:bg-white"
+                  >
+                    <span className="text-lg font-semibold text-slate-900 group-hover:text-orange-600">
+                      {child.title}
+                    </span>
+                    {child.excerpt ? (
+                      <span className="mt-1 text-sm text-slate-600">{child.excerpt}</span>
+                    ) : null}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
     </BlogContainer>
   );
