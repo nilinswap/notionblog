@@ -254,6 +254,32 @@ export async function getBlockChildren(blockId: string, pageSize = 100) {
     return blocks;
 }
 
+type NotionBlockWithChildren = {
+    id: string;
+    type: string;
+    has_children?: boolean;
+    children?: NotionBlockWithChildren[];
+    [key: string]: unknown;
+};
+
+export async function getBlockTree(blockId: string, pageSize = 100): Promise<NotionBlockWithChildren[]> {
+    const blocks = await getBlockChildren(blockId, pageSize);
+
+    return Promise.all(
+        blocks.map(async (blockItem) => {
+            const block = blockItem as NotionBlockWithChildren;
+            if (!block.has_children) {
+                return block;
+            }
+
+            return {
+                ...block,
+                children: await getBlockTree(block.id, pageSize),
+            };
+        }),
+    );
+}
+
 export async function queryBlogPosts() {
     const { roots } = await getBlogIndex();
     return roots;
@@ -323,7 +349,7 @@ export async function getBlogPostBySlug(slug: string) {
 
 export async function getBlogPageProps(pageId: string) {
     const page = await getPage(pageId);
-    const blocks = await getBlockChildren(pageId);
+    const blocks = await getBlockTree(pageId);
     const typedPage = page as NotionPage;
     const { byId } = await getBlogIndex();
     const summary = byId.get(pageId);
