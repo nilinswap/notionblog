@@ -111,7 +111,7 @@ function getPropertyValue(page: NotionPage, propertyName: string) {
     switch (property.type) {
         case "title":
             return richTextToString(property.title);
-    
+
         case "rich_text":
             return richTextToString(property.rich_text);
         case "select":
@@ -280,16 +280,16 @@ export async function getBlockTree(blockId: string, pageSize = 100): Promise<Not
                 return !block.in_trash && !block.archived;
             })
             .map(async (blockItem) => {
-            const block = blockItem as NotionBlockWithChildren;
-            if (!block.has_children) {
-                return block;
-            }
+                const block = blockItem as NotionBlockWithChildren;
+                if (!block.has_children) {
+                    return block;
+                }
 
-            return {
-                ...block,
-                children: await getBlockTree(block.id, pageSize),
-            };
-        }),
+                return {
+                    ...block,
+                    children: await getBlockTree(block.id, pageSize),
+                };
+            }),
     );
 }
 
@@ -391,23 +391,59 @@ function extractGoogleDriveFileId(url: string): string | null {
     return fileIdMatch ? fileIdMatch[1] : null;
 }
 
-function convertToDirectImageUrl(url: string): string {
+async function resolveGooglePhotosImageUrl(shareUrl: string): Promise<string | null> {
+    try {
+        const response = await fetch(shareUrl, {
+            redirect: "follow",
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            },
+        });
+
+        const html = await response.text();
+
+        // Find lh3.googleusercontent.com URLs embedded in the page
+        const matches = html.match(/https:\/\/lh3\.googleusercontent\.com\/[^\\"'<>\s]+/g);
+
+        if (!matches?.length) {
+            return null;
+        }
+
+        // Use the first match and normalize to original size
+        const url = matches[0];
+        return url.replace(/=w\d+(-h\d+)?(-[^?]*)?(\?.*)?$/, "=s0");
+    } catch (error) {
+        console.error("Error resolving Google Photos URL:", error);
+        return null;
+    }
+}
+
+async function convertToDirectImageUrl(url: string): Promise<string> {
     // Check if it's a Google Drive URL
-    console.log(`Converting URL: "${url}"`);
     if (url.includes("drive.google.com")) {
         const fileId = extractGoogleDriveFileId(url);
-        console.log(`Converting Google Drive URL. Original: "${url}", Extracted file ID: "${fileId}"`);
+        console.log(`Extracted file ID from Google Drive URL "${url}":`, fileId);
         if (fileId) {
-            return `https://drive.google.com/uc?export=download&id=${fileId}`;
+            console.log(`Converted Google Drive URL "${url}" to direct image URL:`, `https://drive.google.com/uc?export=download&id=${fileId}`);
+            return Promise.resolve(`https://drive.google.com/uc?export=download&id=${fileId}`);
         }
     }
-    // Return original URL if not a Google Drive URL or couldn't extract ID
+
+    // Check if it's a Google Photos share URL
+    if (url.includes("photos.app.goo.gl")) {
+        const resolvedUrl = await resolveGooglePhotosImageUrl(url);
+        if (resolvedUrl) {
+            return resolvedUrl;
+        }
+    }
+
+    // Return original URL if not a recognized format or couldn't resolve
     return url;
 }
 
 export async function getAlbumItems(): Promise<AlbumItem[]> {
     const albumDataSourceId = process.env.NOTION_ALBUM_DATASOURCE_ID || "375f2649-c68a-80ff-8cec-000b481bd05d";
-    
+
     if (!albumDataSourceId) {
         return [];
     }
@@ -427,7 +463,7 @@ export async function getAlbumItems(): Promise<AlbumItem[]> {
                 const title = (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "Untitled") as string;
                 let imageUrl = (getURLProperty(page, "ImageURL") || getPropertyValue(page, "Image") || "") as string;
                 // Convert Google Drive URLs to direct image URLs
-                imageUrl = convertToDirectImageUrl(imageUrl);
+                imageUrl = await convertToDirectImageUrl(imageUrl);
                 const story = (getPropertyValue(page, "Story") || getPropertyValue(page, "Description") || "") as string;
                 console.log(`asdfadf page "${title}" (${page.id}): imageUrl="${imageUrl}", story="${story}"`);
                 if (imageUrl) {

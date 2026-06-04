@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState } from "react";
+import Image from "next/image";
 
 interface AlbumCardProps {
   title: string;
@@ -27,7 +27,7 @@ export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
         className="transition-opacity duration-300 object-contain w-full"
         style={{
           opacity: isHovered ? 0.3 : 1,
-          height: 'auto',
+          height: "auto",
         }}
       />
 
@@ -36,7 +36,7 @@ export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
         className="absolute inset-0 bg-black bg-opacity-60 p-4 flex flex-col justify-between transition-opacity duration-300"
         style={{
           opacity: isHovered ? 1 : 0,
-          pointerEvents: isHovered ? 'auto' : 'none',
+          pointerEvents: isHovered ? "auto" : "none",
         }}
       >
         <div>

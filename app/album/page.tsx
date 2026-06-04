@@ -1,10 +1,10 @@
-import { Metadata } from 'next';
-import { getAlbumItems } from '@/lib/notion-api';
-import AlbumCard from './album-card';
+import { Metadata } from "next";
+import { getAlbumItems } from "@/lib/notion-api";
+import AlbumCard from "./album-card";
 
 export const metadata: Metadata = {
-  title: 'Album',
-  description: 'My photo album with stories',
+  title: "Album",
+  description: "My photo album with stories",
 };
 
 export default async function AlbumPage() {
@@ -29,7 +29,7 @@ export default async function AlbumPage() {
                 key={item.id}
                 className="break-inside-avoid"
                 style={{
-                  gridAutoRows: 'minmax(300px, auto)',
+                  gridAutoRows: "minmax(300px, auto)",
                 }}
               >
                 <AlbumCard
