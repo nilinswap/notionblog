@@ -22,6 +22,12 @@ const Header = () => {
                 ReadLog
               </Link>
               <Link
+                href="/album"
+                className="text-gray-600 hover:text-orange-500 transition-colors font-medium"
+              >
+                Album
+              </Link>
+              <Link
                 href="/blog/now"
                 className="text-gray-600 hover:text-orange-500 transition-colors font-medium"
               >

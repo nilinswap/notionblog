@@ -369,3 +369,63 @@ export async function getBlogPageProps(pageId: string) {
         slug: summary?.slug || pageSegmentSlug(typedPage),
     };
 }
+
+export type AlbumItem = {
+    id: string;
+    title: string;
+    imageUrl: string;
+    story: string;
+};
+
+function findAlbumPageId(): string {
+    return "375f2649c68a80cd8270c06081e9d25f"
+}
+
+export async function getAlbumItems(): Promise<AlbumItem[]> {
+    const albumPageId = findAlbumPageId();
+    if (!albumPageId) {
+        return [];
+    }
+    console.log(`Fetching album items from page ID: ${albumPageId}`);
+
+    try {
+        const blocks = await getBlockChildren(albumPageId);
+        const albumItems: AlbumItem[] = [];
+        console.log(`Found ${blocks.length} top-level blocks in album page`, blocks.map((b) => ({ id: b.id, type: (b as NotionBlockWithChildren).type })));
+
+        for (const block of blocks) {
+            const typedBlock = block as NotionBlockWithChildren & { type: string; child_database?: { title: string } };
+
+            // Check if this is a child database block
+            if (typedBlock.type === "child_database") {
+                // Query the child database
+                const dbId = typedBlock.id;
+                const dbResponse = await (notion as { databases: { query: (args: unknown) => Promise<unknown> } }).databases.query({
+                    database_id: dbId,
+                });
+                const typedResponse = dbResponse as NotionQueryResponse;
+                console.log(`Found ${typedResponse.results.length} items in album database "${typedBlock.child_database?.title || "Unknown"}" (${dbId})`);
+
+                for (const dbPage of typedResponse.results) {
+                    const title = (getPropertyValue(dbPage, "Title") || getPropertyValue(dbPage, "Name") || "Untitled") as string;
+                    const imageUrl = (getPropertyValue(dbPage, "Image URL") || getPropertyValue(dbPage, "Image") || "") as string;
+                    const story = (getPropertyValue(dbPage, "Story") || getPropertyValue(dbPage, "Description") || "") as string;
+
+                    if (imageUrl) {
+                        albumItems.push({
+                            id: dbPage.id,
+                            title,
+                            imageUrl,
+                            story,
+                        });
+                    }
+                }
+            }
+        }
+
+        return albumItems;
+    } catch (error) {
+        console.error("Error fetching album items:", error);
+        return [];
+    }
+}
