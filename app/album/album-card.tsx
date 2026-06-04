@@ -11,6 +11,7 @@ interface AlbumCardProps {
 
 export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   return (
     <div
@@ -19,14 +20,19 @@ export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Image Container */}
-      <div className="relative w-full aspect-square overflow-hidden bg-gray-200">
+      <div className="relative w-full bg-gray-200 flex items-center justify-center" style={{ minHeight: '200px' }}>
         <Image
           src={imageUrl}
           alt={title}
-          fill
-          className="object-cover transition-opacity duration-300"
+          width={400}
+          height={600}
+          onLoad={() => setImageLoaded(true)}
+          className="transition-opacity duration-300 object-contain"
           style={{
             opacity: isHovered ? 0.3 : 1,
+            maxHeight: '400px',
+            width: 'auto',
+            height: 'auto',
           }}
         />
       </div>
