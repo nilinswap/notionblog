@@ -385,6 +385,26 @@ export type AlbumItem = {
     story: string;
 };
 
+function extractGoogleDriveFileId(url: string): string | null {
+    // Match pattern: /d/FILE_ID/ or /id=FILE_ID
+    const fileIdMatch = url.match(/(?:\/d\/|id=)([a-zA-Z0-9-_]+)/);
+    return fileIdMatch ? fileIdMatch[1] : null;
+}
+
+function convertToDirectImageUrl(url: string): string {
+    // Check if it's a Google Drive URL
+    console.log(`Converting URL: "${url}"`);
+    if (url.includes("drive.google.com")) {
+        const fileId = extractGoogleDriveFileId(url);
+        console.log(`Converting Google Drive URL. Original: "${url}", Extracted file ID: "${fileId}"`);
+        if (fileId) {
+            return `https://drive.google.com/uc?export=download&id=${fileId}`;
+        }
+    }
+    // Return original URL if not a Google Drive URL or couldn't extract ID
+    return url;
+}
+
 export async function getAlbumItems(): Promise<AlbumItem[]> {
     const albumDataSourceId = process.env.NOTION_ALBUM_DATASOURCE_ID || "375f2649-c68a-80ff-8cec-000b481bd05d";
     
@@ -404,11 +424,12 @@ export async function getAlbumItems(): Promise<AlbumItem[]> {
             const typedResponse = response as unknown as NotionQueryResponse;
 
             for (const page of typedResponse.results) {
-                console.log("Processing page:", page.id, page, getPropertyValue(page, "ImageURL"));
                 const title = (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "Untitled") as string;
-                const imageUrl = getURLProperty(page, "ImageURL") || (getPropertyValue(page, "Image") as string) || "";
+                let imageUrl = (getURLProperty(page, "ImageURL") || getPropertyValue(page, "Image") || "") as string;
+                // Convert Google Drive URLs to direct image URLs
+                imageUrl = convertToDirectImageUrl(imageUrl);
                 const story = (getPropertyValue(page, "Story") || getPropertyValue(page, "Description") || "") as string;
-                console.log(`Extracted - Title: ${title}, Image URL: ${imageUrl}, Story: ${story}`);
+                console.log(`asdfadf page "${title}" (${page.id}): imageUrl="${imageUrl}", story="${story}"`);
                 if (imageUrl) {
                     albumItems.push({
                         id: page.id,
@@ -421,7 +442,7 @@ export async function getAlbumItems(): Promise<AlbumItem[]> {
 
             cursor = typedResponse.next_cursor || undefined;
         } while (cursor);
-
+        console.log("Fetched album items:", albumItems);
         return albumItems;
     } catch (error) {
         console.error("Error fetching album items:", error);
