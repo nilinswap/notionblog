@@ -11,33 +11,27 @@ interface AlbumCardProps {
 
 export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
 
   return (
     <div
-      className="relative overflow-hidden rounded-lg shadow-md transition-shadow duration-300 hover:shadow-xl group"
+      className="relative overflow-hidden rounded-lg shadow-md transition-shadow duration-300 hover:shadow-xl"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Image Container */}
-      <div className="relative w-full bg-gray-200 flex items-center justify-center" style={{ minHeight: '200px' }}>
-        <Image
-          src={imageUrl}
-          alt={title}
-          width={400}
-          height={600}
-          onLoad={() => setImageLoaded(true)}
-          className="transition-opacity duration-300 object-contain"
-          style={{
-            opacity: isHovered ? 0.3 : 1,
-            maxHeight: '400px',
-            width: 'auto',
-            height: 'auto',
-          }}
-        />
-      </div>
+      {/* Image */}
+      <Image
+        src={imageUrl}
+        alt={title}
+        width={400}
+        height={600}
+        className="transition-opacity duration-300 object-contain w-full"
+        style={{
+          opacity: isHovered ? 0.3 : 1,
+          height: 'auto',
+        }}
+      />
 
-      {/* Story Overlay */}
+      {/* Story Overlay - Only on Hover */}
       <div
         className="absolute inset-0 bg-black bg-opacity-60 p-4 flex flex-col justify-between transition-opacity duration-300"
         style={{
@@ -52,13 +46,6 @@ export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
           </p>
         </div>
       </div>
-
-      {/* Title Below Image */}
-      {!isHovered && (
-        <div className="p-3 bg-white">
-          <h3 className="text-sm font-medium text-gray-900 truncate">{title}</h3>
-        </div>
-      )}
     </div>
   );
 }
