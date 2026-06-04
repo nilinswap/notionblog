@@ -97,13 +97,21 @@ export function pageSegmentSlug(page: NotionPage) {
     return `${titleSlug}-${suffix}`;
 }
 
+function getURLProperty(page: NotionPage, propertyName: string) {
+    const property = page.properties?.[propertyName] as NotionProperty | undefined;
+    if (!property || typeof property !== "object") return null;
+    return property.url || null;
+}
+
 function getPropertyValue(page: NotionPage, propertyName: string) {
     const property = page.properties?.[propertyName] as NotionProperty | undefined;
+    console.log(`Getting property "${propertyName}" from page "${page.id}":`, property, typeof property);
     if (!property || typeof property !== "object") return null;
 
     switch (property.type) {
         case "title":
             return richTextToString(property.title);
+    
         case "rich_text":
             return richTextToString(property.rich_text);
         case "select":
@@ -377,51 +385,42 @@ export type AlbumItem = {
     story: string;
 };
 
-function findAlbumPageId(): string {
-    return "375f2649c68a80cd8270c06081e9d25f"
-}
-
 export async function getAlbumItems(): Promise<AlbumItem[]> {
-    const albumPageId = findAlbumPageId();
-    if (!albumPageId) {
+    const albumDataSourceId = process.env.NOTION_ALBUM_DATASOURCE_ID || "375f2649-c68a-80ff-8cec-000b481bd05d";
+    
+    if (!albumDataSourceId) {
         return [];
     }
-    console.log(`Fetching album items from page ID: ${albumPageId}`);
+
+    const albumItems: AlbumItem[] = [];
+    let cursor: string | undefined = undefined;
 
     try {
-        const blocks = await getBlockChildren(albumPageId);
-        const albumItems: AlbumItem[] = [];
-        console.log(`Found ${blocks.length} top-level blocks in album page`, blocks.map((b) => ({ id: b.id, type: (b as NotionBlockWithChildren).type })));
+        do {
+            const response = await (notion as { dataSources: { query: (args: unknown) => Promise<unknown> } }).dataSources.query({
+                data_source_id: albumDataSourceId,
+                start_cursor: cursor,
+            });
+            const typedResponse = response as unknown as NotionQueryResponse;
 
-        for (const block of blocks) {
-            const typedBlock = block as NotionBlockWithChildren & { type: string; child_database?: { title: string } };
-
-            // Check if this is a child database block
-            if (typedBlock.type === "child_database") {
-                // Query the child database
-                const dbId = typedBlock.id;
-                const dbResponse = await (notion as { databases: { query: (args: unknown) => Promise<unknown> } }).databases.query({
-                    database_id: dbId,
-                });
-                const typedResponse = dbResponse as NotionQueryResponse;
-                console.log(`Found ${typedResponse.results.length} items in album database "${typedBlock.child_database?.title || "Unknown"}" (${dbId})`);
-
-                for (const dbPage of typedResponse.results) {
-                    const title = (getPropertyValue(dbPage, "Title") || getPropertyValue(dbPage, "Name") || "Untitled") as string;
-                    const imageUrl = (getPropertyValue(dbPage, "Image URL") || getPropertyValue(dbPage, "Image") || "") as string;
-                    const story = (getPropertyValue(dbPage, "Story") || getPropertyValue(dbPage, "Description") || "") as string;
-
-                    if (imageUrl) {
-                        albumItems.push({
-                            id: dbPage.id,
-                            title,
-                            imageUrl,
-                            story,
-                        });
-                    }
+            for (const page of typedResponse.results) {
+                console.log("Processing page:", page.id, page, getPropertyValue(page, "ImageURL"));
+                const title = (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "Untitled") as string;
+                const imageUrl = getURLProperty(page, "ImageURL") || (getPropertyValue(page, "Image") as string) || "";
+                const story = (getPropertyValue(page, "Story") || getPropertyValue(page, "Description") || "") as string;
+                console.log(`Extracted - Title: ${title}, Image URL: ${imageUrl}, Story: ${story}`);
+                if (imageUrl) {
+                    albumItems.push({
+                        id: page.id,
+                        title,
+                        imageUrl,
+                        story,
+                    });
                 }
             }
-        }
+
+            cursor = typedResponse.next_cursor || undefined;
+        } while (cursor);
 
         return albumItems;
     } catch (error) {
