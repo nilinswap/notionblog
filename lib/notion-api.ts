@@ -26,6 +26,7 @@ type NotionProperty =
     | { type: "date"; date?: { start?: string } }
     | { type: "formula"; formula?: { string?: string; number?: number } }
     | { type: "relation"; relation?: Array<{ id?: string }> }
+    | { type: "url"; url?: string | null }
     | Record<string, unknown>;
 
 type NotionPage = {
@@ -100,7 +101,7 @@ export function pageSegmentSlug(page: NotionPage) {
 function getURLProperty(page: NotionPage, propertyName: string) {
     const property = page.properties?.[propertyName] as NotionProperty | undefined;
     if (!property || typeof property !== "object") return null;
-    return property.url || null;
+    return (property as { url?: string | null }).url || null;
 }
 
 function getPropertyValue(page: NotionPage, propertyName: string) {
