@@ -7,9 +7,10 @@ interface AlbumCardProps {
   title: string;
   imageUrl: string;
   story: string;
+  date?: string;
 }
 
-export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
+export default function AlbumCard({ title, imageUrl, story, date }: AlbumCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isTouch, setIsTouch] = useState(false);
 
@@ -28,6 +29,21 @@ export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
   const handleClick = () => {
     if (isTouch) {
       setIsHovered((prev) => !prev);
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "";
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return dateString;
+      return d.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return dateString;
     }
   };
 
@@ -62,7 +78,12 @@ export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
         }}
       >
         <div style={{ textShadow: "0 2px 4px rgba(0,0,0,0.8)" }}>
-          <h3 className="text-white text-base font-semibold mb-1">{title}</h3>
+          <h3 className="text-white text-base font-semibold mb-0.5">{title}</h3>
+          {date && (
+            <p className="text-gray-300 text-[10px] font-semibold mb-1 uppercase tracking-wider">
+              {formatDate(date)}
+            </p>
+          )}
           <p className="text-gray-100 text-xs leading-relaxed line-clamp-3">
             {story}
           </p>

@@ -33,6 +33,7 @@ export default async function AlbumPage() {
                   title={item.title}
                   imageUrl={item.imageUrl}
                   story={item.story}
+                  date={item.date}
                 />
               </div>
             ))}

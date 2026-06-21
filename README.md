@@ -7,7 +7,7 @@ For more information, see the [course curriculum](https://nextjs.org/learn) on t
 
 - [x] On hover, let the image take most of the screen and let the story show in a lower portion of the picutre. 
 - [] Do randomisation of the images
-- [] Add date to the images
+- [x] Add date to the images
 - [x] mobile view for the album
 - [] Idea of my little corner
 
