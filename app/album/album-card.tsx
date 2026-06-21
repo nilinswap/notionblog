@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
 interface AlbumCardProps {
@@ -11,12 +11,32 @@ interface AlbumCardProps {
 
 export default function AlbumCard({ title, imageUrl, story }: AlbumCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    setIsTouch(window.matchMedia("(pointer: coarse)").matches);
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (!isTouch) setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (!isTouch) setIsHovered(false);
+  };
+
+  const handleClick = () => {
+    if (isTouch) {
+      setIsHovered((prev) => !prev);
+    }
+  };
 
   return (
     <div
-      className="relative overflow-hidden rounded-lg shadow-md transition-all duration-300 hover:shadow-xl"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="relative overflow-hidden rounded-lg shadow-md transition-all duration-300 hover:shadow-xl cursor-pointer"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
     >
       {/* Image */}
       <Image

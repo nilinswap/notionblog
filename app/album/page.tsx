@@ -23,14 +23,11 @@ export default async function AlbumPage() {
 
         {/* Masonry Grid */}
         {albumItems.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-[300px]">
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
             {albumItems.map((item) => (
               <div
                 key={item.id}
-                className="break-inside-avoid"
-                style={{
-                  gridAutoRows: "minmax(300px, auto)",
-                }}
+                className="break-inside-avoid mb-6"
               >
                 <AlbumCard
                   title={item.title}
