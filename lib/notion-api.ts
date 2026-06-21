@@ -384,6 +384,7 @@ export type AlbumItem = {
     title: string;
     imageUrl: string;
     story: string;
+    date?: string;
 };
 
 function extractGoogleDriveFileId(url: string): string | null {
@@ -466,13 +467,15 @@ export async function getAlbumItems(): Promise<AlbumItem[]> {
                 // Convert Google Drive URLs to direct image URLs
                 imageUrl = await convertToDirectImageUrl(imageUrl);
                 const story = (getPropertyValue(page, "Story") || getPropertyValue(page, "Description") || "") as string;
-                console.log(`asdfadf page "${title}" (${page.id}): imageUrl="${imageUrl}", story="${story}"`);
+                const date = (getPropertyValue(page, "Date") || getPropertyValue(page, "Published") || "") as string;
+                console.log(`asdfadf page "${title}" (${page.id}): imageUrl="${imageUrl}", story="${story}", date="${date}"`);
                 if (imageUrl) {
                     albumItems.push({
                         id: page.id,
                         title,
                         imageUrl,
                         story,
+                        date,
                     });
                 }
             }
