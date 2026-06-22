@@ -2,13 +2,25 @@ import { Metadata } from "next";
 import { getAlbumItems } from "@/lib/notion-api";
 import AlbumCard from "./album-card";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Album",
   description: "My photo album with stories",
 };
 
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export default async function AlbumPage() {
-  const albumItems = await getAlbumItems();
+  const rawAlbumItems = await getAlbumItems();
+  const albumItems = shuffleArray(rawAlbumItems);
 
   return (
     <main className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
