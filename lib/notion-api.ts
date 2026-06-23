@@ -23,6 +23,7 @@ type NotionProperty =
     | { type: "rich_text"; rich_text?: NotionRichText }
     | { type: "select"; select?: { name?: string } }
     | { type: "multi_select"; multi_select?: Array<{ name?: string }> }
+    | { type: "status"; status?: { name?: string } }
     | { type: "date"; date?: { start?: string } }
     | { type: "formula"; formula?: { string?: string; number?: number } }
     | { type: "relation"; relation?: Array<{ id?: string }> }
@@ -117,6 +118,8 @@ function getPropertyValue(page: NotionPage, propertyName: string) {
             return richTextToString(property.rich_text);
         case "select":
             return (property as { select?: { name?: string } }).select?.name || null;
+        case "status":
+            return (property as { status?: { name?: string } }).status?.name || null;
         case "multi_select":
             return (property as { multi_select?: Array<{ name?: string }> }).multi_select?.map((item) => item.name || "") || [];
         case "date":
@@ -197,7 +200,10 @@ async function queryAllDatasourcePages() {
         cursor = typedResponse.next_cursor || undefined;
     } while (cursor);
 
-    return pages;
+    return pages.filter((page) => {
+        const status = getPropertyValue(page, "Status");
+        return typeof status === "string" && status.toLowerCase() === "published";
+    });
 }
 
 function buildHierarchicalSlug(pageId: string, segmentById: Map<string, string>, parentById: Map<string, string | null>) {
@@ -337,7 +343,9 @@ export async function getBlogPostBySlug(slug: string) {
             const pageSlug = normalizeSlug(
                 (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || pageSegmentSlug(page) || "") as string,
             );
-            return pageSlug === lastSegment || pageSlug === normalizedSlug;
+            const status = getPropertyValue(page, "Status");
+            const isPublished = typeof status === "string" && status.toLowerCase() === "published";
+            return isPublished && (pageSlug === lastSegment || pageSlug === normalizedSlug);
         });
 
         if (result) {
@@ -355,6 +363,9 @@ export async function getBlogPostBySlug(slug: string) {
         const pageSlug = normalizeSlug(
             (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || pageSegmentSlug(page) || "") as string,
         );
+        const status = getPropertyValue(page, "Status");
+        const isPublished = typeof status === "string" && status.toLowerCase() === "published";
+        if (!isPublished) return false;
         if (pageSlug === normalizedSlug) return true;
         const title = normalizeSlug((getPropertyValue(page, "Title") || "") as string);
         return title === normalizedSlug;
