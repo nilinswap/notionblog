@@ -16,6 +16,28 @@ interface TILContainerProps {
   initialEntries: TILEntry[];
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const monthNameToNum = (name: string): string => {
+  const normalized = name.trim().toLowerCase();
+  const index = MONTH_NAMES.findIndex(
+    (m) => m.toLowerCase() === normalized || m.toLowerCase().slice(0, 3) === normalized.slice(0, 3)
+  );
+  if (index === -1) return "07";
+  return String(index + 1).padStart(2, "0");
+};
+
+const numToMonthName = (numStr: string): string => {
+  const num = parseInt(numStr, 10);
+  if (num >= 1 && num <= 12) {
+    return MONTH_NAMES[num - 1];
+  }
+  return "July";
+};
+
 export default function TILContainer({ initialEntries }: TILContainerProps) {
   // Default values based on the current local date (2026-07-03)
   const [activeMode, setActiveMode] = useState<"year" | "month" | "day">("year");
@@ -59,20 +81,6 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
       return orderA - orderB;
     });
   }, [initialEntries, selectedYear]);
-
-  // Get all unique days for the selected year and month
-  const allDays = useMemo(() => {
-    const days = new Set(
-      initialEntries
-        .filter((e) => e.year === selectedYear && e.month === selectedMonth)
-        .map((e) => e.day)
-    );
-    days.add("3"); // Ensure current day is available
-
-    return Array.from(days).sort((a, b) => {
-      return parseInt(a, 10) - parseInt(b, 10);
-    });
-  }, [initialEntries, selectedYear, selectedMonth]);
 
   // Filter entries based on the current selection and mode
   const filteredEntries = useMemo(() => {
@@ -126,68 +134,107 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
           </div>
         </div>
 
-        {/* Date Toggles / Modifiers */}
+        {/* Date Calendar / Dropdown Selectors */}
         <div className="bg-slate-50/80 rounded-2xl p-6 border border-slate-100 space-y-4">
-          {/* Year Modifier (always visible) */}
-          <div className="space-y-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Year</span>
-            <div className="flex flex-wrap gap-2">
-              {allYears.map((year) => (
-                <button
-                  key={year}
-                  onClick={() => setSelectedYear(year)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-150 ${
-                    selectedYear === year
-                      ? "bg-orange-500 text-white shadow-sm"
-                      : "bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-500"
-                  }`}
+          {/* Year Mode Selector */}
+          {activeMode === "year" && (
+            <div className="space-y-2">
+              <label htmlFor="year-select" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Select Year
+              </label>
+              <div className="relative inline-block w-full max-w-xs">
+                <select
+                  id="year-select"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 appearance-none cursor-pointer pr-10"
                 >
-                  {year}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Month Modifier (visible in month & day modes) */}
-          {(activeMode === "month" || activeMode === "day") && (
-            <div className="space-y-2 pt-2 border-t border-slate-200/50">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Month</span>
-              <div className="flex flex-wrap gap-2">
-                {allMonths.map((month) => (
-                  <button
-                    key={month}
-                    onClick={() => setSelectedMonth(month)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-150 ${
-                      selectedMonth === month
-                        ? "bg-orange-500 text-white shadow-sm"
-                        : "bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-500"
-                    }`}
-                  >
-                    {month}
-                  </button>
-                ))}
+                  {allYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                  <span className="text-xs">▼</span>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Day Modifier (visible only in day mode) */}
-          {activeMode === "day" && (
-            <div className="space-y-2 pt-2 border-t border-slate-200/50">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Day</span>
-              <div className="flex flex-wrap gap-2">
-                {allDays.map((day) => (
-                  <button
-                    key={day}
-                    onClick={() => setSelectedDay(day)}
-                    className={`px-3 py-1 rounded-lg text-sm font-semibold transition-all duration-150 ${
-                      selectedDay === day
-                        ? "bg-orange-500 text-white shadow-sm"
-                        : "bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-500"
-                    }`}
+          {/* Month Mode Selectors */}
+          {activeMode === "month" && (
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="space-y-2 flex-1">
+                <label htmlFor="month-year-select" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                  Select Year
+                </label>
+                <div className="relative inline-block w-full">
+                  <select
+                    id="month-year-select"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 appearance-none cursor-pointer pr-10"
                   >
-                    {day}
-                  </button>
-                ))}
+                    {allYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                    <span className="text-xs">▼</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 flex-1">
+                <label htmlFor="month-select" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                  Select Month
+                </label>
+                <div className="relative inline-block w-full">
+                  <select
+                    id="month-select"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 appearance-none cursor-pointer pr-10"
+                  >
+                    {allMonths.map((month) => (
+                      <option key={month} value={month}>
+                        {month}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                    <span className="text-xs">▼</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Day/Date Mode Selector (Calendar) */}
+          {activeMode === "day" && (
+            <div className="space-y-2">
+              <label htmlFor="date-picker" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Select Date (Calendar)
+              </label>
+              <div className="relative inline-block w-full max-w-xs">
+                <input
+                  id="date-picker"
+                  type="date"
+                  value={`${selectedYear}-${monthNameToNum(selectedMonth)}-${selectedDay.padStart(2, "0")}`}
+                  onChange={(e) => {
+                    const val = e.target.value; // "YYYY-MM-DD"
+                    if (val) {
+                      const [y, m, d] = val.split("-");
+                      setSelectedYear(y);
+                      setSelectedMonth(numToMonthName(m));
+                      setSelectedDay(String(parseInt(d, 10)));
+                    }
+                  }}
+                  className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 cursor-pointer"
+                />
               </div>
             </div>
           )}
