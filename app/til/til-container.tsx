@@ -174,21 +174,28 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Stable random coordinate distribution for scattered whiteboard layout
-  const getDistributedPosition = (id: string) => {
+  // Stable translation and rotation styling for grouped/coagulated layout
+  const getDistributedStyle = (id: string, index: number, isFocused: boolean) => {
     let hash1 = 0;
     let hash2 = 0;
+    let hash3 = 0;
     for (let i = 0; i < id.length; i++) {
       hash1 = id.charCodeAt(i) + ((hash1 << 5) - hash1);
       hash2 = id.charCodeAt(i) * 31 + ((hash2 << 7) - hash2);
+      hash3 = id.charCodeAt(i) * 17 + ((hash3 << 3) - hash3);
     }
-    
-    // Distribute left between 5% and 75%
-    const left = 5 + (Math.abs(hash1) % 71);
-    // Distribute top between 5% and 65%
-    const top = 5 + (Math.abs(hash2) % 61);
-    
-    return { left: `${left}%`, top: `${top}%` };
+
+    // Rotation between -12 and 12 degrees
+    const rotation = (Math.abs(hash1) % 25) - 12;
+    // Translate X between -15px and 15px
+    const translateX = (Math.abs(hash2) % 31) - 15;
+    // Translate Y between -15px and 15px
+    const translateY = (Math.abs(hash3) % 31) - 15;
+
+    return {
+      transform: `translate(${translateX}px, ${translateY}px) rotate(${rotation}deg) scale(${isFocused ? 1.05 : 1})`,
+      zIndex: isFocused ? 50 : 10 + (index % 10),
+    };
   };
 
   // Reset index and card selection on filter change
@@ -520,28 +527,20 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
             {filteredEntries.length > 0 ? (
               <div className="w-full">
                 
-                {/* 1. SCATTERED LAYOUT (Desktop View in Year/Month mode) */}
+                {/* 1. PACKED SCATTERED LAYOUT (Desktop View in Year/Month mode - cards coagulated together) */}
                 {(activeMode === "year" || activeMode === "month") && (
                   <div className="hidden md:block w-full">
-                    <div className="relative w-full min-h-[600px] bg-slate-50/30 border border-slate-100 rounded-3xl p-6 overflow-hidden bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] [background-size:24px_24px] shadow-inner mb-6">
+                    <div className="flex flex-wrap gap-x-2 gap-y-6 justify-center items-center p-8 bg-slate-50/20 border border-slate-100 rounded-3xl min-h-[400px] bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] [background-size:24px_24px] shadow-inner mb-6 max-w-5xl mx-auto overflow-visible">
                       {filteredEntries.map((entry, index) => {
-                        const rotation = getRotationAngle(entry.id);
                         const isFocused = clickedCardId === entry.id;
-                        const position = getDistributedPosition(entry.id);
                         const pastelClass = getPostitColorClass(entry.id);
 
                         return (
                           <div
                             key={entry.id}
                             onClick={() => setClickedCardId(entry.id)}
-                            style={{
-                              position: "absolute",
-                              left: position.left,
-                              top: position.top,
-                              transform: `rotate(${rotation}deg) scale(${isFocused ? 1.05 : 1})`,
-                              zIndex: isFocused ? 50 : 10 + (index % 10),
-                            }}
-                            className={`w-64 h-64 flex flex-col justify-between p-5 rounded-2xl border select-none transition-all duration-300 cursor-pointer hover:scale-102 hover:shadow-lg ${
+                            style={getDistributedStyle(entry.id, index, isFocused)}
+                            className={`relative w-64 h-64 flex flex-col justify-between p-5 rounded-2xl border select-none transition-all duration-300 cursor-pointer -mx-1.5 -my-1.5 hover:scale-102 hover:shadow-lg ${
                               isFocused 
                                 ? `${pastelClass} ring-2 ring-orange-500/20 shadow-xl scale-105` 
                                 : `${pastelClass} shadow-md`
