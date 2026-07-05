@@ -39,6 +39,32 @@ const numToMonthName = (numStr: string): string => {
   return "July";
 };
 
+const getCalendarDays = (yearStr: string, monthStr: string) => {
+  const year = parseInt(yearStr, 10);
+  const monthNum = parseInt(monthNameToNum(monthStr), 10);
+
+  // Day of the week for the 1st of the month: 0 (Sun) to 6 (Sat)
+  const firstDayDate = new Date(year, monthNum - 1, 1);
+  const startDayOfWeek = firstDayDate.getDay();
+
+  // Number of days in the month
+  const daysInMonth = new Date(year, monthNum, 0).getDate();
+
+  const days: (number | null)[] = [];
+
+  // Add empty padding for days before the 1st
+  for (let i = 0; i < startDayOfWeek; i++) {
+    days.push(null);
+  }
+
+  // Add day numbers
+  for (let d = 1; d <= daysInMonth; d++) {
+    days.push(d);
+  }
+
+  return days;
+};
+
 export default function TILContainer({ initialEntries }: TILContainerProps) {
   // Default values based on the current local date (2026-07-05)
   const [activeMode, setActiveMode] = useState<"year" | "month" | "day">("year");
@@ -50,6 +76,21 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
   const [enteringIndex, setEnteringIndex] = useState<number | null>(null);
   const [swipeDir, setSwipeDir] = useState<"exit-right" | "enter-left" | "entering" | null>(null);
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+
+  const entriesCountPerDay = useMemo(() => {
+    const counts: Record<string, number> = {};
+    initialEntries.forEach((entry) => {
+      if (entry.year === selectedYear && entry.month === selectedMonth) {
+        const d = String(parseInt(entry.day, 10));
+        counts[d] = (counts[d] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [initialEntries, selectedYear, selectedMonth]);
+
+  const calendarDays = useMemo(() => {
+    return getCalendarDays(selectedYear, selectedMonth);
+  }, [selectedYear, selectedMonth]);
 
   // Get all unique years in descending order
   const allYears = useMemo(() => {
@@ -317,8 +358,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
             </div>
           )}
 
-          {/* Month Mode Selectors */}
-          {activeMode === "month" && (
+          {(activeMode === "month" || activeMode === "day") && (
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="space-y-2 flex-1">
                 <label htmlFor="month-year-select" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
@@ -328,7 +368,10 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                   <select
                     id="month-year-select"
                     value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedYear(e.target.value);
+                      setActiveMode("month");
+                    }}
                     className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 appearance-none cursor-pointer pr-10"
                   >
                     {allYears.map((year) => (
@@ -351,7 +394,10 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                   <select
                     id="month-select"
                     value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedMonth(e.target.value);
+                      setActiveMode("month");
+                    }}
                     className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 appearance-none cursor-pointer pr-10"
                   >
                     {allMonths.map((month) => (
@@ -367,160 +413,191 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
               </div>
             </div>
           )}
+        </div>
 
-          {/* Day/Date Mode Selector (Calendar) */}
-          {activeMode === "day" && (
-            <div className="space-y-2">
-              <label htmlFor="date-picker" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                Select Date (Calendar)
-              </label>
-              <div className="relative inline-block w-full max-w-xs">
-                <input
-                  id="date-picker"
-                  type="date"
-                  value={`${selectedYear}-${monthNameToNum(selectedMonth)}-${selectedDay.padStart(2, "0")}`}
-                  onChange={(e) => {
-                    const val = e.target.value; // "YYYY-MM-DD"
-                    if (val) {
-                      const [y, m, d] = val.split("-");
-                      setSelectedYear(y);
-                      setSelectedMonth(numToMonthName(m));
-                      setSelectedDay(String(parseInt(d, 10)));
-                    }
-                  }}
-                  className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 cursor-pointer"
-                />
+        <div className="flex flex-col gap-8">
+          {(activeMode === "month" || activeMode === "day") && (
+            <div className="order-2 md:order-1 bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-sm max-w-md w-full mx-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  📅 {selectedMonth} {selectedYear}
+                </span>
+                {activeMode === "day" && (
+                  <button
+                    onClick={() => setActiveMode("month")}
+                    className="text-[10px] font-bold text-orange-500 hover:text-orange-600 transition uppercase"
+                  >
+                    Show whole month
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-7 gap-1.5 text-center">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((dayName) => (
+                  <div key={dayName} className="text-[10px] font-bold text-slate-400 uppercase tracking-wider select-none py-1">
+                    {dayName}
+                  </div>
+                ))}
+                {calendarDays.map((dayNum, idx) => {
+                  if (dayNum === null) {
+                    return <div key={`empty-${idx}`} className="aspect-square" />;
+                  }
+
+                  const dayStr = String(dayNum);
+                  const count = entriesCountPerDay[dayStr] || 0;
+                  const isSelected = activeMode === "day" && selectedDay === dayStr;
+
+                  return (
+                    <button
+                      key={`day-${dayNum}`}
+                      onClick={() => {
+                        setSelectedDay(dayStr);
+                        setActiveMode("day");
+                      }}
+                      className={`relative aspect-square flex flex-col items-center justify-center rounded-xl text-xs sm:text-sm font-semibold transition-all select-none border group ${
+                        isSelected
+                          ? "bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20 scale-105 z-10 font-bold"
+                          : count > 0
+                          ? "bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100 hover:border-orange-200"
+                          : "bg-slate-50/50 border-transparent text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
+                      }`}
+                    >
+                      <span>{dayNum}</span>
+                      {count > 0 && (
+                        <span
+                          className={`absolute bottom-0.5 px-1 min-w-[14px] h-[14px] rounded-full text-[8px] font-extrabold flex items-center justify-center leading-none ${
+                            isSelected
+                              ? "bg-white text-orange-600 shadow-sm"
+                              : "bg-orange-500 text-white shadow-sm"
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
-        </div>
 
-        {/* Results Count & Section Header */}
-        <div className="flex justify-between items-center px-2">
-          <h2 className="text-lg font-bold text-slate-800">
-            {activeMode === "year" && `Entries in ${selectedYear}`}
-            {activeMode === "month" && `Entries in ${selectedMonth} ${selectedYear}`}
-            {activeMode === "day" && `Entries for ${selectedDay} ${selectedMonth} ${selectedYear}`}
-          </h2>
-          <span className="text-xs font-medium text-slate-400">
-            {filteredEntries.length} {filteredEntries.length === 1 ? "entry" : "entries"} found
-          </span>
-        </div>
-
-        {/* Entries Listing (Card Stack) */}
-        {filteredEntries.length > 0 ? (
-          <div className="flex flex-col items-center gap-8 py-6">
-            {/* Stack Container */}
-            <div className="relative w-full max-w-[300px] h-[300px] sm:max-w-[340px] sm:h-[340px] flex items-center justify-center">
-              {filteredEntries.map((entry, index) => {
-                const distance = filteredEntries.length > 1 ? (index - currentIndex + filteredEntries.length) % filteredEntries.length : 0;
-                // Only render if it's the entering card, the active card, or one of the next 3 stack cards
-                const isVisible = index === enteringIndex || distance < 4;
-                if (!isVisible) return null;
-
-                const isTop = distance === 0 && index !== enteringIndex;
-
-                return (
-                  <div
-                    key={entry.id}
-                    onClick={() => isTop && handleNext()}
-                    style={getCardStyle(index)}
-                    className={`absolute inset-0 flex flex-col justify-between p-6 rounded-2xl border select-none transition-all duration-300 cursor-pointer ${getPostitColorClass(
-                      entry.id
-                    )}`}
-                  >
-                    {/* Simulated Tape strip */}
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-white/35 backdrop-blur-[1px] border border-white/20 shadow-sm rotate-[-1.5deg] z-10" />
-
-                    {/* Card Header (Date) */}
-                    <div className="flex justify-between items-center text-[10px] font-extrabold tracking-widest uppercase opacity-60">
-                      <span>📌 TIL</span>
-                      <span>
-                        {entry.day} {entry.month} {entry.year}
-                      </span>
-                    </div>
-
-                    {/* Card Content */}
-                    <div className="flex-grow flex items-center justify-center my-3 overflow-hidden">
-                      <p
-                        onClick={(e) => {
-                          // Prevent clicks inside the scrollable text from swiping the card
-                          e.stopPropagation();
-                        }}
-                        className={`${lusitana.className} text-base sm:text-[17px] text-slate-800 text-center leading-relaxed font-semibold break-words max-h-[160px] sm:max-h-[190px] overflow-y-auto w-full px-1`}
-                      >
-                        {entry.text}
-                      </p>
-                    </div>
-
-                    {/* Card Footer */}
-                    <div className="flex justify-between items-center text-[9px] font-bold tracking-wider uppercase opacity-55">
-                      <span>notion log</span>
-                      <span>
-                        {index + 1} of {filteredEntries.length}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="order-1 md:order-2 w-full flex flex-col gap-6">
+            <div className="flex justify-between items-center px-2">
+              <h2 className="text-lg font-bold text-slate-800">
+                {activeMode === "year" && `Entries in ${selectedYear}`}
+                {activeMode === "month" && `Entries in ${selectedMonth} ${selectedYear}`}
+                {activeMode === "day" && `Entries for ${selectedDay} ${selectedMonth} ${selectedYear}`}
+              </h2>
+              <span className="text-xs font-medium text-slate-400">
+                {filteredEntries.length} {filteredEntries.length === 1 ? "entry" : "entries"} found
+              </span>
             </div>
 
-            {/* Navigation Buttons */}
-            {filteredEntries.length > 1 && (
-              <div className="flex items-center gap-6 mt-4">
-                <button
-                  onClick={handlePrev}
-                  disabled={isTransitioning}
-                  className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Previous Card"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2.5}
-                    stroke="currentColor"
-                    className="w-5 h-5"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                  </svg>
-                </button>
+            {filteredEntries.length > 0 ? (
+              <div className="flex flex-col items-center gap-8 py-6">
+                <div className="relative w-full max-w-[300px] h-[300px] sm:max-w-[340px] sm:h-[340px] flex items-center justify-center">
+                  {filteredEntries.map((entry, index) => {
+                    const distance = filteredEntries.length > 1 ? (index - currentIndex + filteredEntries.length) % filteredEntries.length : 0;
+                    const isVisible = index === enteringIndex || distance < 4;
+                    if (!isVisible) return null;
 
-                <div className="text-sm font-bold text-slate-600 min-w-[70px] text-center select-none">
-                  {currentIndex + 1} / {filteredEntries.length}
+                    const isTop = distance === 0 && index !== enteringIndex;
+
+                    return (
+                      <div
+                        key={entry.id}
+                        onClick={() => isTop && handleNext()}
+                        style={getCardStyle(index)}
+                        className={`absolute inset-0 flex flex-col justify-between p-6 rounded-2xl border select-none transition-all duration-300 cursor-pointer ${getPostitColorClass(
+                          entry.id
+                        )}`}
+                      >
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-white/35 backdrop-blur-[1px] border border-white/20 shadow-sm rotate-[-1.5deg] z-10" />
+
+                        <div className="flex justify-between items-center text-[10px] font-extrabold tracking-widest uppercase opacity-60">
+                          <span>📌 TIL</span>
+                          <span>
+                            {entry.day} {entry.month} {entry.year}
+                          </span>
+                        </div>
+
+                        <div className="flex-grow flex items-center justify-center my-3 overflow-hidden">
+                          <p
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            className={`${lusitana.className} text-base sm:text-[17px] text-slate-800 text-center leading-relaxed font-semibold break-words max-h-[160px] sm:max-h-[190px] overflow-y-auto w-full px-1`}
+                          >
+                            {entry.text}
+                          </p>
+                        </div>
+
+                        <div className="flex justify-between items-center text-[9px] font-bold tracking-wider uppercase opacity-55">
+                          <span>notion log</span>
+                          <span>
+                            {index + 1} of {filteredEntries.length}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <button
-                  onClick={handleNext}
-                  disabled={isTransitioning}
-                  className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Next Card"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2.5}
-                    stroke="currentColor"
-                    className="w-5 h-5"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
+                {filteredEntries.length > 1 && (
+                  <div className="flex items-center gap-6 mt-4">
+                    <button
+                      onClick={handlePrev}
+                      disabled={isTransitioning}
+                      className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Previous Card"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2.5}
+                        stroke="currentColor"
+                        className="w-5 h-5"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                      </svg>
+                    </button>
+
+                    <div className="text-sm font-bold text-slate-600 min-w-[70px] text-center select-none">
+                      {currentIndex + 1} / {filteredEntries.length}
+                    </div>
+
+                    <button
+                      onClick={handleNext}
+                      disabled={isTransitioning}
+                      className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Next Card"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2.5}
+                        stroke="currentColor"
+                        className="w-5 h-5"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-16 px-4 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
+                <span className="text-4xl">📭</span>
+                <h3 className="mt-4 text-lg font-bold text-slate-800">No logs found</h3>
+                <p className="mt-2 text-slate-400 text-sm max-w-xs mx-auto">
+                  There are no entries logged in Notion for the selected period.
+                </p>
               </div>
             )}
           </div>
-        ) : (
-          <div className="text-center py-16 px-4 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
-            <span className="text-4xl">📭</span>
-            <h3 className="mt-4 text-lg font-bold text-slate-800">No logs found</h3>
-            <p className="mt-2 text-slate-400 text-sm max-w-xs mx-auto">
-              There are no entries logged in Notion for the selected period.
-            </p>
-          </div>
-        )}
+        </div>
 
-        {/* Footer Link */}
         <div className="flex justify-center pt-4">
           <Link
             href="/blog"
