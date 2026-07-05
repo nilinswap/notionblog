@@ -202,6 +202,8 @@ async function queryAllDatasourcePages() {
 
     return pages.filter((page) => {
         const status = getPropertyValue(page, "Status");
+        const isLocal = process.env.NODE_ENV === "development";
+        if (isLocal) return true;
         return typeof status === "string" && status.toLowerCase() === "published";
     });
 }
@@ -344,8 +346,9 @@ export async function getBlogPostBySlug(slug: string) {
                 (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || pageSegmentSlug(page) || "") as string,
             );
             const status = getPropertyValue(page, "Status");
-            const isPublished = typeof status === "string" && status.toLowerCase() === "published";
-            return isPublished && (pageSlug === lastSegment || pageSlug === normalizedSlug);
+            const isLocal = process.env.NODE_ENV === "development";
+            const isAllowed = isLocal || (typeof status === "string" && status.toLowerCase() === "published");
+            return isAllowed && (pageSlug === lastSegment || pageSlug === normalizedSlug);
         });
 
         if (result) {
@@ -364,8 +367,9 @@ export async function getBlogPostBySlug(slug: string) {
             (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || pageSegmentSlug(page) || "") as string,
         );
         const status = getPropertyValue(page, "Status");
-        const isPublished = typeof status === "string" && status.toLowerCase() === "published";
-        if (!isPublished) return false;
+        const isLocal = process.env.NODE_ENV === "development";
+        const isAllowed = isLocal || (typeof status === "string" && status.toLowerCase() === "published");
+        if (!isAllowed) return false;
         if (pageSlug === normalizedSlug) return true;
         const title = normalizeSlug((getPropertyValue(page, "Title") || "") as string);
         return title === normalizedSlug;
@@ -500,3 +504,37 @@ export async function getAlbumItems(): Promise<AlbumItem[]> {
         return [];
     }
 }
+
+export async function getTILPage() {
+    const dataSourceId = process.env.NOTION_BLOG_DATASOURCE_ID;
+    if (dataSourceId) {
+        let cursor: string | undefined = undefined;
+        do {
+            const response = await notion.dataSources.query({
+                data_source_id: dataSourceId,
+                start_cursor: cursor,
+            });
+            const typedResponse = response as unknown as NotionQueryResponse;
+            const found = typedResponse.results.find((page) => {
+                const slug = (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || "") as string;
+                const normalizedSlug = normalizeSlug(slug);
+                const title = (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "") as string;
+                return normalizedSlug === "til" || normalizeSlug(title) === "til";
+            });
+            if (found) return found;
+            cursor = typedResponse.next_cursor || undefined;
+        } while (cursor);
+    }
+
+    const searchResponse = await notion.search({
+        query: "til",
+        filter: { property: "object", value: "page" },
+    });
+    const typedSearch = searchResponse as NotionSearchResponse;
+    return typedSearch.results.find((page) => {
+        const slug = (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || "") as string;
+        const title = (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "") as string;
+        return normalizeSlug(slug) === "til" || normalizeSlug(title) === "til";
+    });
+}
+
