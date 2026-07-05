@@ -584,7 +584,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                 <div className={`flex flex-col items-center gap-8 py-6 ${
                   (activeMode === "year" || activeMode === "month") ? "md:hidden" : ""
                 }`}>
-                  <div className="relative w-full max-w-[300px] h-[300px] sm:max-w-[340px] sm:h-[340px] flex items-center justify-center">
+                  <div className="relative w-[320px] h-[320px] sm:w-[360px] sm:h-[360px] flex items-center justify-center overflow-hidden">
                     {filteredEntries.map((entry, index) => {
                       const distance = filteredEntries.length > 1 ? (index - currentIndex + filteredEntries.length) % filteredEntries.length : 0;
                       const isVisible = index === enteringIndex || distance < 4;
@@ -597,7 +597,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                           key={entry.id}
                           onClick={() => isTop && handleNext()}
                           style={getCardStyle(index)}
-                          className={`absolute inset-0 flex flex-col justify-between p-6 rounded-2xl border select-none transition-all duration-300 cursor-pointer ${getPostitColorClass(
+                          className={`absolute w-[260px] h-[260px] sm:w-[300px] sm:h-[300px] flex flex-col justify-between p-6 rounded-2xl border select-none transition-all duration-300 cursor-pointer ${getPostitColorClass(
                             entry.id
                           )}`}
                         >
