@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import BlogContainer from "@/app/blog/blog-container";
 import Link from "next/link";
+import { lusitana } from "@/app/ui/fonts";
 
 type TILEntry = {
   id: string;
@@ -39,11 +40,16 @@ const numToMonthName = (numStr: string): string => {
 };
 
 export default function TILContainer({ initialEntries }: TILContainerProps) {
-  // Default values based on the current local date (2026-07-03)
+  // Default values based on the current local date (2026-07-05)
   const [activeMode, setActiveMode] = useState<"year" | "month" | "day">("year");
   const [selectedYear, setSelectedYear] = useState<string>("2026");
   const [selectedMonth, setSelectedMonth] = useState<string>("July");
-  const [selectedDay, setSelectedDay] = useState<string>("3");
+  const [selectedDay, setSelectedDay] = useState<string>("5");
+
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [enteringIndex, setEnteringIndex] = useState<number | null>(null);
+  const [swipeDir, setSwipeDir] = useState<"exit-right" | "enter-left" | "entering" | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
 
   // Get all unique years in descending order
   const allYears = useMemo(() => {
@@ -98,6 +104,155 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
       }
     });
   }, [initialEntries, activeMode, selectedYear, selectedMonth, selectedDay]);
+
+  // Stable random rotation angle between -15 and 15 degrees
+  const getRotationAngle = (id: string) => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    // Scale hash to range [-15, 15]
+    return (Math.abs(hash) % 31) - 15;
+  };
+
+  // Stable random post-it colors
+  const getPostitColorClass = (id: string) => {
+    const colors = [
+      "bg-amber-100/95 text-amber-900 border-amber-200/40 shadow-amber-950/10",    // Classic yellow
+      "bg-rose-100/95 text-rose-900 border-rose-200/40 shadow-rose-950/10",        // Pink
+      "bg-sky-100/95 text-sky-900 border-sky-200/40 shadow-sky-950/10",          // Blue
+      "bg-emerald-100/95 text-emerald-900 border-emerald-200/40 shadow-emerald-950/10", // Green
+      "bg-purple-100/95 text-purple-900 border-purple-200/40 shadow-purple-950/10", // Purple
+      "bg-orange-100/95 text-orange-900 border-orange-200/40 shadow-orange-950/10"  // Orange
+    ];
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Reset index on filter change
+  useEffect(() => {
+    setCurrentIndex(0);
+    setEnteringIndex(null);
+    setSwipeDir(null);
+    setIsTransitioning(false);
+  }, [filteredEntries]);
+
+  const handleNext = () => {
+    if (isTransitioning || filteredEntries.length <= 1) return;
+    setIsTransitioning(true);
+    setSwipeDir("exit-right");
+    setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % filteredEntries.length);
+      setSwipeDir(null);
+      setIsTransitioning(false);
+    }, 400);
+  };
+
+  const handlePrev = () => {
+    if (isTransitioning || filteredEntries.length <= 1) return;
+    setIsTransitioning(true);
+    const prevIndex = (currentIndex - 1 + filteredEntries.length) % filteredEntries.length;
+    setEnteringIndex(prevIndex);
+    setSwipeDir("enter-left");
+    setTimeout(() => {
+      setSwipeDir("entering");
+    }, 20);
+    setTimeout(() => {
+      setCurrentIndex(prevIndex);
+      setEnteringIndex(null);
+      setSwipeDir(null);
+      setIsTransitioning(false);
+    }, 420);
+  };
+
+  const getCardStyle = (index: number) => {
+    const N = filteredEntries.length;
+    const rotation = getRotationAngle(filteredEntries[index].id);
+
+    // 1. If this card is currently entering from the left (on click Prev)
+    if (index === enteringIndex) {
+      if (swipeDir === "enter-left") {
+        return {
+          transform: `translateX(-150%) rotate(${rotation - 25}deg) scale(0.9)`,
+          opacity: 0,
+          zIndex: 60,
+          transition: "none",
+        };
+      }
+      if (swipeDir === "entering") {
+        return {
+          transform: `translate(0, 0) rotate(${rotation}deg) scale(1)`,
+          opacity: 1,
+          zIndex: 60,
+          transition: "transform 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 400ms ease-out",
+        };
+      }
+    }
+
+    // 2. If this card is currently the top card and is exiting (on click Next)
+    if (index === currentIndex && swipeDir === "exit-right") {
+      return {
+        transform: `translateX(150%) rotate(${rotation + 25}deg) scale(0.9)`,
+        opacity: 0,
+        zIndex: 60,
+        transition: "transform 400ms ease-in, opacity 400ms ease-in",
+      };
+    }
+
+    // 3. For all other cards, calculate their stacked position relative to the main card
+    const distance = N > 1 ? (index - currentIndex + N) % N : 0;
+    const isTop = distance === 0;
+    const isSecond = distance === 1;
+    const isThird = distance === 2;
+    const isFourth = distance === 3;
+
+    if (isTop) {
+      return {
+        transform: `translate(0, 0) rotate(${rotation}deg) scale(1)`,
+        opacity: 1,
+        zIndex: 50,
+        transition: "transform 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 400ms ease-out",
+      };
+    }
+
+    if (isSecond) {
+      return {
+        transform: `translate(0, 8px) rotate(${rotation}deg) scale(0.96)`,
+        opacity: 0.9,
+        zIndex: 40,
+        transition: "transform 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 400ms ease-out",
+      };
+    }
+
+    if (isThird) {
+      return {
+        transform: `translate(0, 16px) rotate(${rotation}deg) scale(0.92)`,
+        opacity: 0.8,
+        zIndex: 30,
+        transition: "transform 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 400ms ease-out",
+      };
+    }
+
+    if (isFourth) {
+      return {
+        transform: `translate(0, 24px) rotate(${rotation}deg) scale(0.88)`,
+        opacity: 0.7,
+        zIndex: 20,
+        transition: "transform 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 400ms ease-out",
+      };
+    }
+
+    return {
+      transform: `translate(0, 32px) rotate(${rotation}deg) scale(0.8)`,
+      opacity: 0,
+      zIndex: 10,
+      pointerEvents: "none" as const,
+      transition: "transform 400ms ease-out, opacity 400ms ease-out",
+    };
+  };
 
   return (
     <BlogContainer>
@@ -252,25 +407,108 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
           </span>
         </div>
 
-        {/* Entries Listing */}
+        {/* Entries Listing (Card Stack) */}
         {filteredEntries.length > 0 ? (
-          <div className="divide-y divide-slate-100 bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-            {filteredEntries.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-start gap-4 p-5 hover:bg-slate-50/50 transition duration-200"
-              >
-                <span className="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-orange-400 mt-2 shadow-sm shadow-orange-300" />
-                <div className="flex-grow">
-                  <p className="text-slate-700 leading-relaxed text-[17px]">
-                    {entry.text}
-                    <span className="inline-block text-slate-400 text-sm font-normal ml-2 select-none">
-                      — {entry.day} {entry.month} {entry.year}
-                    </span>
-                  </p>
+          <div className="flex flex-col items-center gap-8 py-6">
+            {/* Stack Container */}
+            <div className="relative w-full max-w-[300px] h-[300px] sm:max-w-[340px] sm:h-[340px] flex items-center justify-center">
+              {filteredEntries.map((entry, index) => {
+                const distance = filteredEntries.length > 1 ? (index - currentIndex + filteredEntries.length) % filteredEntries.length : 0;
+                // Only render if it's the entering card, the active card, or one of the next 3 stack cards
+                const isVisible = index === enteringIndex || distance < 4;
+                if (!isVisible) return null;
+
+                const isTop = distance === 0 && index !== enteringIndex;
+
+                return (
+                  <div
+                    key={entry.id}
+                    onClick={() => isTop && handleNext()}
+                    style={getCardStyle(index)}
+                    className={`absolute inset-0 flex flex-col justify-between p-6 rounded-2xl border select-none transition-all duration-300 cursor-pointer ${getPostitColorClass(
+                      entry.id
+                    )}`}
+                  >
+                    {/* Simulated Tape strip */}
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-white/35 backdrop-blur-[1px] border border-white/20 shadow-sm rotate-[-1.5deg] z-10" />
+
+                    {/* Card Header (Date) */}
+                    <div className="flex justify-between items-center text-[10px] font-extrabold tracking-widest uppercase opacity-60">
+                      <span>📌 TIL</span>
+                      <span>
+                        {entry.day} {entry.month} {entry.year}
+                      </span>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="flex-grow flex items-center justify-center my-3 overflow-hidden">
+                      <p
+                        onClick={(e) => {
+                          // Prevent clicks inside the scrollable text from swiping the card
+                          e.stopPropagation();
+                        }}
+                        className={`${lusitana.className} text-base sm:text-[17px] text-slate-800 text-center leading-relaxed font-semibold break-words max-h-[160px] sm:max-h-[190px] overflow-y-auto w-full px-1`}
+                      >
+                        {entry.text}
+                      </p>
+                    </div>
+
+                    {/* Card Footer */}
+                    <div className="flex justify-between items-center text-[9px] font-bold tracking-wider uppercase opacity-55">
+                      <span>notion log</span>
+                      <span>
+                        {index + 1} of {filteredEntries.length}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Navigation Buttons */}
+            {filteredEntries.length > 1 && (
+              <div className="flex items-center gap-6 mt-4">
+                <button
+                  onClick={handlePrev}
+                  disabled={isTransitioning}
+                  className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Previous Card"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2.5}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+
+                <div className="text-sm font-bold text-slate-600 min-w-[70px] text-center select-none">
+                  {currentIndex + 1} / {filteredEntries.length}
                 </div>
+
+                <button
+                  onClick={handleNext}
+                  disabled={isTransitioning}
+                  className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Next Card"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2.5}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
               </div>
-            ))}
+            )}
           </div>
         ) : (
           <div className="text-center py-16 px-4 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
