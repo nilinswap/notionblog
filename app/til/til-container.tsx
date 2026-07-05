@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import BlogContainer from "@/app/blog/blog-container";
 import Link from "next/link";
-import { lusitana } from "@/app/ui/fonts";
+import { lusitana, kalam } from "@/app/ui/fonts";
 
 type TILEntry = {
   id: string;
@@ -76,6 +76,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
   const [enteringIndex, setEnteringIndex] = useState<number | null>(null);
   const [swipeDir, setSwipeDir] = useState<"exit-right" | "enter-left" | "entering" | null>(null);
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  const [clickedCardId, setClickedCardId] = useState<string | null>(null);
 
   const entriesCountPerDay = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -156,15 +157,15 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
     return (Math.abs(hash) % 31) - 15;
   };
 
-  // Stable random post-it colors
+  // Stable random post-it colors (soft pastels)
   const getPostitColorClass = (id: string) => {
     const colors = [
-      "bg-amber-100/95 text-amber-900 border-amber-200/40 shadow-amber-950/10",    // Classic yellow
-      "bg-rose-100/95 text-rose-900 border-rose-200/40 shadow-rose-950/10",        // Pink
-      "bg-sky-100/95 text-sky-900 border-sky-200/40 shadow-sky-950/10",          // Blue
-      "bg-emerald-100/95 text-emerald-900 border-emerald-200/40 shadow-emerald-950/10", // Green
-      "bg-purple-100/95 text-purple-900 border-purple-200/40 shadow-purple-950/10", // Purple
-      "bg-orange-100/95 text-orange-900 border-orange-200/40 shadow-orange-950/10"  // Orange
+      "bg-[#fffbeb] text-amber-950 border-[#fde68a]/50 shadow-amber-950/5",    // Soft yellow
+      "bg-[#fff1f2] text-rose-950 border-[#fecdd3]/50 shadow-rose-950/5",       // Soft rose
+      "bg-[#f0f9ff] text-sky-950 border-[#bae6fd]/50 shadow-sky-950/5",         // Soft blue
+      "bg-[#f0fdf4] text-emerald-950 border-[#bbf7d0]/50 shadow-emerald-950/5", // Soft green
+      "bg-[#faf5ff] text-purple-950 border-[#e9d5ff]/50 shadow-purple-950/5",   // Soft purple
+      "bg-[#fff7ed] text-orange-950 border-[#fed7aa]/50 shadow-orange-950/5"    // Soft orange
     ];
     let hash = 0;
     for (let i = 0; i < id.length; i++) {
@@ -173,12 +174,30 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Reset index on filter change
+  // Stable random coordinate distribution for scattered whiteboard layout
+  const getDistributedPosition = (id: string) => {
+    let hash1 = 0;
+    let hash2 = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash1 = id.charCodeAt(i) + ((hash1 << 5) - hash1);
+      hash2 = id.charCodeAt(i) * 31 + ((hash2 << 7) - hash2);
+    }
+    
+    // Distribute left between 5% and 75%
+    const left = 5 + (Math.abs(hash1) % 71);
+    // Distribute top between 5% and 65%
+    const top = 5 + (Math.abs(hash2) % 61);
+    
+    return { left: `${left}%`, top: `${top}%` };
+  };
+
+  // Reset index and card selection on filter change
   useEffect(() => {
     setCurrentIndex(0);
     setEnteringIndex(null);
     setSwipeDir(null);
     setIsTransitioning(false);
+    setClickedCardId(null);
   }, [filteredEntries]);
 
   const handleNext = () => {
@@ -358,6 +377,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
             </div>
           )}
 
+          {/* Month/Day Mode Selectors (Both show Year & Month dropdowns, day picker is removed) */}
           {(activeMode === "month" || activeMode === "day") && (
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="space-y-2 flex-1">
@@ -415,7 +435,9 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
           )}
         </div>
 
+        {/* Unified Flex Layout for Calendar Grid and Card Stack */}
         <div className="flex flex-col gap-8">
+          {/* Component A: Calendar Grid (Rendered in month and day modes) */}
           {(activeMode === "month" || activeMode === "day") && (
             <div className="order-2 md:order-1 bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-sm max-w-md w-full mx-auto">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
@@ -480,7 +502,9 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
             </div>
           )}
 
+          {/* Component B: Cards Stack and Controls wrapper */}
           <div className="order-1 md:order-2 w-full flex flex-col gap-6">
+            {/* Results Count & Section Header */}
             <div className="flex justify-between items-center px-2">
               <h2 className="text-lg font-bold text-slate-800">
                 {activeMode === "year" && `Entries in ${selectedYear}`}
@@ -492,99 +516,169 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
               </span>
             </div>
 
+            {/* Entries Listing */}
             {filteredEntries.length > 0 ? (
-              <div className="flex flex-col items-center gap-8 py-6">
-                <div className="relative w-full max-w-[300px] h-[300px] sm:max-w-[340px] sm:h-[340px] flex items-center justify-center">
-                  {filteredEntries.map((entry, index) => {
-                    const distance = filteredEntries.length > 1 ? (index - currentIndex + filteredEntries.length) % filteredEntries.length : 0;
-                    const isVisible = index === enteringIndex || distance < 4;
-                    if (!isVisible) return null;
+              <div className="w-full">
+                
+                {/* 1. SCATTERED LAYOUT (Desktop View in Year/Month mode) */}
+                {(activeMode === "year" || activeMode === "month") && (
+                  <div className="hidden md:block w-full">
+                    <div className="relative w-full min-h-[600px] bg-slate-50/30 border border-slate-100 rounded-3xl p-6 overflow-hidden bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] [background-size:24px_24px] shadow-inner mb-6">
+                      {filteredEntries.map((entry, index) => {
+                        const rotation = getRotationAngle(entry.id);
+                        const isFocused = clickedCardId === entry.id;
+                        const position = getDistributedPosition(entry.id);
+                        const pastelClass = getPostitColorClass(entry.id);
 
-                    const isTop = distance === 0 && index !== enteringIndex;
-
-                    return (
-                      <div
-                        key={entry.id}
-                        onClick={() => isTop && handleNext()}
-                        style={getCardStyle(index)}
-                        className={`absolute inset-0 flex flex-col justify-between p-6 rounded-2xl border select-none transition-all duration-300 cursor-pointer ${getPostitColorClass(
-                          entry.id
-                        )}`}
-                      >
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-white/35 backdrop-blur-[1px] border border-white/20 shadow-sm rotate-[-1.5deg] z-10" />
-
-                        <div className="flex justify-between items-center text-[10px] font-extrabold tracking-widest uppercase opacity-60">
-                          <span>📌 TIL</span>
-                          <span>
-                            {entry.day} {entry.month} {entry.year}
-                          </span>
-                        </div>
-
-                        <div className="flex-grow flex items-center justify-center my-3 overflow-hidden">
-                          <p
-                            onClick={(e) => {
-                              e.stopPropagation();
+                        return (
+                          <div
+                            key={entry.id}
+                            onClick={() => setClickedCardId(entry.id)}
+                            style={{
+                              position: "absolute",
+                              left: position.left,
+                              top: position.top,
+                              transform: `rotate(${rotation}deg) scale(${isFocused ? 1.05 : 1})`,
+                              zIndex: isFocused ? 50 : 10 + (index % 10),
                             }}
-                            className={`${lusitana.className} text-base sm:text-[17px] text-slate-800 text-center leading-relaxed font-semibold break-words max-h-[160px] sm:max-h-[190px] overflow-y-auto w-full px-1`}
+                            className={`w-64 h-64 flex flex-col justify-between p-5 rounded-2xl border select-none transition-all duration-300 cursor-pointer hover:scale-102 hover:shadow-lg ${
+                              isFocused 
+                                ? `${pastelClass} ring-2 ring-orange-500/20 shadow-xl scale-105` 
+                                : `${pastelClass} shadow-md`
+                            }`}
                           >
-                            {entry.text}
-                          </p>
-                        </div>
+                            {/* Simulated Tape strip */}
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-white/35 backdrop-blur-[1px] border border-white/20 shadow-sm rotate-[-1.5deg] z-10" />
 
-                        <div className="flex justify-between items-center text-[9px] font-bold tracking-wider uppercase opacity-55">
-                          <span>notion log</span>
-                          <span>
-                            {index + 1} of {filteredEntries.length}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                            {/* Card Header */}
+                            <div className="flex justify-between items-center text-[9px] font-extrabold tracking-widest uppercase opacity-60">
+                              <span>📌 TIL</span>
+                              <span>
+                                {entry.day} {entry.month} {entry.year}
+                              </span>
+                            </div>
 
-                {filteredEntries.length > 1 && (
-                  <div className="flex items-center gap-6 mt-4">
-                    <button
-                      onClick={handlePrev}
-                      disabled={isTransitioning}
-                      className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Previous Card"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2.5}
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                      </svg>
-                    </button>
+                            {/* Card Content */}
+                            <div className="flex-grow flex items-center justify-center my-2 overflow-hidden">
+                              <p
+                                className={`${kalam.className} text-base text-slate-800 text-center leading-relaxed font-semibold break-words max-h-[140px] overflow-y-auto w-full px-1`}
+                              >
+                                {entry.text}
+                              </p>
+                            </div>
 
-                    <div className="text-sm font-bold text-slate-600 min-w-[70px] text-center select-none">
-                      {currentIndex + 1} / {filteredEntries.length}
+                            {/* Card Footer */}
+                            <div className="flex justify-between items-center text-[8px] font-bold tracking-wider uppercase opacity-55">
+                              <span>notion log</span>
+                              <span>
+                                {index + 1} of {filteredEntries.length}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-
-                    <button
-                      onClick={handleNext}
-                      disabled={isTransitioning}
-                      className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Next Card"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2.5}
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                      </svg>
-                    </button>
                   </div>
                 )}
+
+                {/* 2. STACKED LAYOUT (Mobile View in Year/Month mode, or both views in Day mode) */}
+                <div className={`flex flex-col items-center gap-8 py-6 ${
+                  (activeMode === "year" || activeMode === "month") ? "md:hidden" : ""
+                }`}>
+                  <div className="relative w-full max-w-[300px] h-[300px] sm:max-w-[340px] sm:h-[340px] flex items-center justify-center">
+                    {filteredEntries.map((entry, index) => {
+                      const distance = filteredEntries.length > 1 ? (index - currentIndex + filteredEntries.length) % filteredEntries.length : 0;
+                      const isVisible = index === enteringIndex || distance < 4;
+                      if (!isVisible) return null;
+
+                      const isTop = distance === 0 && index !== enteringIndex;
+
+                      return (
+                        <div
+                          key={entry.id}
+                          onClick={() => isTop && handleNext()}
+                          style={getCardStyle(index)}
+                          className={`absolute inset-0 flex flex-col justify-between p-6 rounded-2xl border select-none transition-all duration-300 cursor-pointer ${getPostitColorClass(
+                            entry.id
+                          )}`}
+                        >
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-white/35 backdrop-blur-[1px] border border-white/20 shadow-sm rotate-[-1.5deg] z-10" />
+
+                          <div className="flex justify-between items-center text-[10px] font-extrabold tracking-widest uppercase opacity-60">
+                            <span>📌 TIL</span>
+                            <span>
+                              {entry.day} {entry.month} {entry.year}
+                            </span>
+                          </div>
+
+                          <div className="flex-grow flex items-center justify-center my-3 overflow-hidden">
+                            <p
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              className={`${kalam.className} text-[15px] sm:text-[18px] text-slate-800 text-center leading-relaxed font-semibold break-words max-h-[160px] sm:max-h-[190px] overflow-y-auto w-full px-1`}
+                            >
+                              {entry.text}
+                            </p>
+                          </div>
+
+                          <div className="flex justify-between items-center text-[9px] font-bold tracking-wider uppercase opacity-55">
+                            <span>notion log</span>
+                            <span>
+                              {index + 1} of {filteredEntries.length}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Navigation Controls */}
+                  {filteredEntries.length > 1 && (
+                    <div className="flex items-center gap-6 mt-4">
+                      <button
+                        onClick={handlePrev}
+                        disabled={isTransitioning}
+                        className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Previous Card"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                        </svg>
+                      </button>
+
+                      <div className="text-sm font-bold text-slate-600 min-w-[70px] text-center select-none">
+                        {currentIndex + 1} / {filteredEntries.length}
+                      </div>
+
+                      <button
+                        onClick={handleNext}
+                        disabled={isTransitioning}
+                        className="flex items-center justify-center w-12 h-12 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-orange-500 hover:border-orange-200 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Next Card"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
               </div>
             ) : (
               <div className="text-center py-16 px-4 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
@@ -598,6 +692,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
           </div>
         </div>
 
+        {/* Footer Link */}
         <div className="flex justify-center pt-4">
           <Link
             href="/blog"
