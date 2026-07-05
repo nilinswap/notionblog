@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import BlogContainer from "@/app/blog/blog-container";
 import Link from "next/link";
-import { lusitana, kalam } from "@/app/ui/fonts";
+import { kalam } from "@/app/ui/fonts";
 
 type TILEntry = {
   id: string;
@@ -31,13 +31,7 @@ const monthNameToNum = (name: string): string => {
   return String(index + 1).padStart(2, "0");
 };
 
-const numToMonthName = (numStr: string): string => {
-  const num = parseInt(numStr, 10);
-  if (num >= 1 && num <= 12) {
-    return MONTH_NAMES[num - 1];
-  }
-  return "July";
-};
+
 
 const getCalendarDays = (yearStr: string, monthStr: string) => {
   const year = parseInt(yearStr, 10);
