@@ -168,28 +168,14 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Stable translation and rotation styling for grouped/coagulated layout
-  const getDistributedStyle = (id: string, index: number, isFocused: boolean) => {
-    let hash1 = 0;
-    let hash2 = 0;
-    let hash3 = 0;
+  // Stable translate offset for stacked cards in grid slot
+  const getTranslateOffset = (id: string, dir: "x" | "y") => {
+    let hash = 0;
     for (let i = 0; i < id.length; i++) {
-      hash1 = id.charCodeAt(i) + ((hash1 << 5) - hash1);
-      hash2 = id.charCodeAt(i) * 31 + ((hash2 << 7) - hash2);
-      hash3 = id.charCodeAt(i) * 17 + ((hash3 << 3) - hash3);
+      hash = id.charCodeAt(i) * (dir === "x" ? 31 : 17) + ((hash << 5) - hash);
     }
-
-    // Rotation between -12 and 12 degrees
-    const rotation = (Math.abs(hash1) % 25) - 12;
-    // Translate X between -15px and 15px
-    const translateX = (Math.abs(hash2) % 31) - 15;
-    // Translate Y between -15px and 15px
-    const translateY = (Math.abs(hash3) % 31) - 15;
-
-    return {
-      transform: `translate(${translateX}px, ${translateY}px) rotate(${rotation}deg) scale(${isFocused ? 1.05 : 1})`,
-      zIndex: isFocused ? 50 : 10 + (index % 10),
-    };
+    // Translation between -8px and 8px
+    return (Math.abs(hash) % 17) - 8;
   };
 
   // Reset index and card selection on filter change
@@ -338,11 +324,10 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
               <button
                 key={mode}
                 onClick={() => setActiveMode(mode)}
-                className={`px-6 py-2 rounded-lg text-sm font-semibold capitalize transition-all duration-200 ${
-                  activeMode === mode
+                className={`px-6 py-2 rounded-lg text-sm font-semibold capitalize transition-all duration-200 ${activeMode === mode
                     ? "bg-white text-orange-600 shadow-sm"
                     : "text-slate-600 hover:text-slate-900"
-                }`}
+                  }`}
               >
                 {mode}
               </button>
@@ -476,22 +461,20 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                         setSelectedDay(dayStr);
                         setActiveMode("day");
                       }}
-                      className={`relative aspect-square flex flex-col items-center justify-center rounded-xl text-xs sm:text-sm font-semibold transition-all select-none border group ${
-                        isSelected
+                      className={`relative aspect-square flex flex-col items-center justify-center rounded-xl text-xs sm:text-sm font-semibold transition-all select-none border group ${isSelected
                           ? "bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20 scale-105 z-10 font-bold"
                           : count > 0
-                          ? "bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100 hover:border-orange-200"
-                          : "bg-slate-50/50 border-transparent text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
-                      }`}
+                            ? "bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100 hover:border-orange-200"
+                            : "bg-slate-50/50 border-transparent text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
+                        }`}
                     >
                       <span>{dayNum}</span>
                       {count > 0 && (
                         <span
-                          className={`absolute bottom-0.5 px-1 min-w-[14px] h-[14px] rounded-full text-[8px] font-extrabold flex items-center justify-center leading-none ${
-                            isSelected
+                          className={`absolute bottom-0.5 px-1 min-w-[14px] h-[14px] rounded-full text-[8px] font-extrabold flex items-center justify-center leading-none ${isSelected
                               ? "bg-white text-orange-600 shadow-sm"
                               : "bg-orange-500 text-white shadow-sm"
-                          }`}
+                            }`}
                         >
                           {count}
                         </span>
@@ -520,64 +503,147 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
             {/* Entries Listing */}
             {filteredEntries.length > 0 ? (
               <div className="w-full">
-                
-                {/* 1. PACKED SCATTERED LAYOUT (Desktop View in Year/Month mode - cards coagulated together) */}
+
+                {/* 1. PACKED SCATTERED GRID LAYOUT (Desktop View in Year/Month mode) */}
                 {(activeMode === "year" || activeMode === "month") && (
                   <div className="hidden md:block w-full">
-                    <div className="flex flex-wrap gap-x-2 gap-y-6 justify-center items-center p-8 bg-slate-50/20 border border-slate-100 rounded-3xl min-h-[400px] bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] [background-size:24px_24px] shadow-inner mb-6 max-w-5xl mx-auto overflow-visible">
-                      {filteredEntries.map((entry, index) => {
-                        const isFocused = clickedCardId === entry.id;
-                        const pastelClass = getPostitColorClass(entry.id);
+                    {(() => {
+                      const N = filteredEntries.length;
+                      const maxCols = 8;
+                      
+                      // Calculate number of rows R needed (up to 3 rows before starting to stack, unless N > 72)
+                      let R = 1;
+                      if (N <= 8) {
+                        R = 1;
+                      } else if (N <= 16) {
+                        R = 2;
+                      } else if (N <= 24) {
+                        R = 3;
+                      } else {
+                        R = Math.max(3, Math.ceil(N / 24) * 3);
+                      }
 
-                        return (
-                          <div
-                            key={entry.id}
-                            onClick={() => setClickedCardId(entry.id)}
-                            style={getDistributedStyle(entry.id, index, isFocused)}
-                            className={`relative w-64 h-64 flex flex-col justify-between p-5 rounded-2xl border select-none transition-all duration-300 cursor-pointer -mx-1.5 -my-1.5 hover:scale-102 hover:shadow-lg ${
-                              isFocused 
-                                ? `${pastelClass} ring-2 ring-orange-500/20 shadow-xl scale-105` 
-                                : `${pastelClass} shadow-md`
-                            }`}
-                          >
-                            {/* Simulated Tape strip */}
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-white/35 backdrop-blur-[1px] border border-white/20 shadow-sm rotate-[-1.5deg] z-10" />
+                      const numSlots = R * maxCols;
+                      const slots: TILEntry[][] = Array.from({ length: numSlots }, () => []);
 
-                            {/* Card Header */}
-                            <div className="flex justify-between items-center text-[9px] font-extrabold tracking-widest uppercase opacity-60">
-                              <span>📌 TIL</span>
-                              <span>
-                                {entry.day} {entry.month} {entry.year}
-                              </span>
-                            </div>
+                      // Generate placement sequence: Layer 1 (row-by-row, evens then odds), then Layer 2 (stacked), then Layer 3 (stacked)...
+                      const placementOrder: { row: number; col: number }[] = [];
+                      
+                      // Layer 1: Place 1st card in slots row-by-row
+                      for (let r = 0; r < R; r++) {
+                        // Evens
+                        [0, 2, 4, 6].forEach(col => placementOrder.push({ row: r, col }));
+                        // Odds
+                        [1, 3, 5, 7].forEach(col => placementOrder.push({ row: r, col }));
+                      }
 
-                            {/* Card Content */}
-                            <div className="flex-grow flex items-center justify-center my-2 overflow-hidden">
-                              <p
-                                className={`${kalam.className} text-base text-slate-800 text-center leading-relaxed font-semibold break-words max-h-[140px] overflow-y-auto w-full px-1`}
-                              >
-                                {entry.text}
-                              </p>
-                            </div>
+                      // Layer 2: Place 2nd card (stacked) in slots row-by-row
+                      for (let r = 0; r < R; r++) {
+                        // Evens
+                        [0, 2, 4, 6].forEach(col => placementOrder.push({ row: r, col }));
+                        // Odds
+                        [1, 3, 5, 7].forEach(col => placementOrder.push({ row: r, col }));
+                      }
 
-                            {/* Card Footer */}
-                            <div className="flex justify-between items-center text-[8px] font-bold tracking-wider uppercase opacity-55">
-                              <span>notion log</span>
-                              <span>
-                                {index + 1} of {filteredEntries.length}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                      // Layer 3: Place 3rd card (stacked) in slots row-by-row
+                      for (let r = 0; r < R; r++) {
+                        // Evens
+                        [0, 2, 4, 6].forEach(col => placementOrder.push({ row: r, col }));
+                        // Odds
+                        [1, 3, 5, 7].forEach(col => placementOrder.push({ row: r, col }));
+                      }
+
+                      // Stably shuffle entries to ensure random stack order within slot
+                      const shuffledEntries = [...filteredEntries];
+                      let seed = 12345;
+                      for (let i = shuffledEntries.length - 1; i > 0; i--) {
+                        seed = (seed * 9301 + 49297) % 233280;
+                        const j = Math.floor((seed / 233280) * (i + 1));
+                        [shuffledEntries[i], shuffledEntries[j]] = [shuffledEntries[j], shuffledEntries[i]];
+                      }
+
+                      // Distribute shuffled entries into slots based on the placement order
+                      shuffledEntries.forEach((entry, index) => {
+                        const coord = placementOrder[index % placementOrder.length];
+                        const slotIdx = coord.row * maxCols + coord.col;
+                        slots[slotIdx].push(entry);
+                      });
+
+                      return (
+                        <div className="grid grid-cols-4 lg:grid-cols-8 gap-y-12 gap-x-4 justify-items-center items-center p-8 bg-slate-50/20 border border-slate-100 rounded-3xl min-h-[320px] bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] [background-size:24px_24px] shadow-inner mb-6 max-w-7xl mx-auto overflow-visible">
+                          {slots.map((slotEntries, slotIdx) => {
+                            if (slotEntries.length === 0) {
+                              return <div key={`empty-slot-${slotIdx}`} className="w-60 h-60 hidden lg:block" />;
+                            }
+
+                            return (
+                              <div key={`slot-${slotIdx}`} className="relative w-60 h-60 overflow-visible flex items-center justify-center">
+                                {slotEntries.map((entry, j) => {
+                                  const isFocused = clickedCardId === entry.id;
+                                  const rotation = getRotationAngle(entry.id);
+                                  const pastelClass = getPostitColorClass(entry.id);
+                                  const translateX = getTranslateOffset(entry.id, "x");
+                                  const translateY = getTranslateOffset(entry.id, "y");
+
+                                  const style = {
+                                    position: "absolute" as const,
+                                    transform: `translate(${translateX}px, ${translateY}px) rotate(${rotation}deg) scale(${isFocused ? 1.05 : 1})`,
+                                    zIndex: isFocused ? 50 : 10 + j,
+                                  };
+
+                                  return (
+                                    <div
+                                      key={entry.id}
+                                      onClick={() => setClickedCardId(entry.id)}
+                                      style={style}
+                                      className={`w-60 h-60 flex flex-col justify-between p-5 rounded-2xl border select-none transition-all duration-300 cursor-pointer hover:scale-102 hover:shadow-lg ${
+                                        isFocused 
+                                          ? `${pastelClass} ring-2 ring-orange-500/20 shadow-xl scale-105` 
+                                          : `${pastelClass} shadow-md`
+                                      }`}
+                                    >
+                                      {/* Simulated Tape strip */}
+                                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-white/35 backdrop-blur-[1px] border border-white/20 shadow-sm rotate-[-1.5deg] z-10" />
+
+                                      {/* Card Header */}
+                                      <div className="flex justify-between items-center text-[9px] font-extrabold tracking-widest uppercase opacity-60">
+                                        <span>📌 TIL</span>
+                                        <span>
+                                          {entry.day} {entry.month} {entry.year}
+                                        </span>
+                                      </div>
+
+                                      {/* Card Content */}
+                                      <div className="flex-grow flex items-center justify-center my-2 overflow-hidden">
+                                        <p
+                                          className={`${kalam.className} text-base text-slate-800 text-center leading-relaxed font-semibold break-words max-h-[140px] overflow-y-auto w-full px-1`}
+                                        >
+                                          {entry.text}
+                                        </p>
+                                      </div>
+
+                                      {/* Card Footer */}
+                                      <div className="flex justify-between items-center text-[8px] font-bold tracking-wider uppercase opacity-55">
+                                        <span>notion log</span>
+                                        <span>
+                                          {filteredEntries.findIndex(e => e.id === entry.id) + 1} of {filteredEntries.length}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
                 {/* 2. STACKED LAYOUT (Mobile View in Year/Month mode, or both views in Day mode) */}
-                <div className={`flex flex-col items-center gap-8 py-6 ${
-                  (activeMode === "year" || activeMode === "month") ? "md:hidden" : ""
-                }`}>
+                <div className={`flex flex-col items-center gap-8 py-6 ${(activeMode === "year" || activeMode === "month") ? "md:hidden" : ""
+                  }`}>
                   <div className="relative w-[320px] h-[320px] sm:w-[360px] sm:h-[360px] flex items-center justify-center overflow-hidden">
                     {filteredEntries.map((entry, index) => {
                       const distance = filteredEntries.length > 1 ? (index - currentIndex + filteredEntries.length) % filteredEntries.length : 0;
