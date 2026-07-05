@@ -313,7 +313,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
             Today I Lived <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">(TIL)</span>
           </h1>
           <p className="text-slate-500 max-w-md mx-auto text-base">
-            Reflections, lessons, and thoughts captured day by day from my Notion workspace.
+            Reflections, lessons, and thoughts captured day by day from my mine.
           </p>
         </div>
 
@@ -597,8 +597,8 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                                       onClick={() => setClickedCardId(entry.id)}
                                       style={style}
                                       className={`w-60 h-60 flex flex-col justify-between p-5 rounded-2xl border select-none transition-all duration-300 cursor-pointer hover:scale-102 hover:shadow-lg ${isFocused
-                                          ? `${pastelClass} ring-2 ring-orange-500/20 shadow-xl scale-105`
-                                          : `${pastelClass} shadow-md`
+                                        ? `${pastelClass} ring-2 ring-orange-500/20 shadow-xl scale-105`
+                                        : `${pastelClass} shadow-md`
                                         }`}
                                     >
                                       {/* Simulated Tape strip */}
