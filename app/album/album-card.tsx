@@ -84,7 +84,14 @@ export default function AlbumCard({ title, imageUrl, story, date }: AlbumCardPro
               {formatDate(date)}
             </p>
           )}
-          <p className="text-gray-100 text-xs leading-relaxed line-clamp-3">
+          <p
+            onClick={(e) => e.stopPropagation()}
+            className="text-gray-100 text-xs leading-relaxed max-h-24 overflow-y-auto pr-1"
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "rgba(255,255,255,0.2) transparent",
+            }}
+          >
             {story}
           </p>
         </div>
