@@ -325,8 +325,8 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                 key={mode}
                 onClick={() => setActiveMode(mode)}
                 className={`px-6 py-2 rounded-lg text-sm font-semibold capitalize transition-all duration-200 ${activeMode === mode
-                    ? "bg-white text-orange-600 shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-orange-600 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
                   }`}
               >
                 {mode}
@@ -462,18 +462,18 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                         setActiveMode("day");
                       }}
                       className={`relative aspect-square flex flex-col items-center justify-center rounded-xl text-xs sm:text-sm font-semibold transition-all select-none border group ${isSelected
-                          ? "bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20 scale-105 z-10 font-bold"
-                          : count > 0
-                            ? "bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100 hover:border-orange-200"
-                            : "bg-slate-50/50 border-transparent text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
+                        ? "bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20 scale-105 z-10 font-bold"
+                        : count > 0
+                          ? "bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100 hover:border-orange-200"
+                          : "bg-slate-50/50 border-transparent text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
                         }`}
                     >
                       <span>{dayNum}</span>
                       {count > 0 && (
                         <span
                           className={`absolute bottom-0.5 px-1 min-w-[14px] h-[14px] rounded-full text-[8px] font-extrabold flex items-center justify-center leading-none ${isSelected
-                              ? "bg-white text-orange-600 shadow-sm"
-                              : "bg-orange-500 text-white shadow-sm"
+                            ? "bg-white text-orange-600 shadow-sm"
+                            : "bg-orange-500 text-white shadow-sm"
                             }`}
                         >
                           {count}
@@ -510,7 +510,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                     {(() => {
                       const N = filteredEntries.length;
                       const maxCols = 8;
-                      
+
                       // Calculate number of rows R needed (up to 3 rows before starting to stack, unless N > 72)
                       let R = 1;
                       if (N <= 8) {
@@ -528,7 +528,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
 
                       // Generate placement sequence: Layer 1 (row-by-row, evens then odds), then Layer 2 (stacked), then Layer 3 (stacked)...
                       const placementOrder: { row: number; col: number }[] = [];
-                      
+
                       // Layer 1: Place 1st card in slots row-by-row
                       for (let r = 0; r < R; r++) {
                         // Evens
@@ -570,7 +570,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                       });
 
                       return (
-                        <div className="grid grid-cols-4 lg:grid-cols-8 gap-y-12 gap-x-4 justify-items-center items-center p-8 bg-slate-50/20 border border-slate-100 rounded-3xl min-h-[320px] bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] [background-size:24px_24px] shadow-inner mb-6 max-w-7xl mx-auto overflow-visible">
+                        <div className="grid grid-cols-4 lg:grid-cols-8 gap-y-4 gap-x-4 justify-items-center items-center p-8 bg-slate-50/20 border border-slate-100 rounded-3xl min-h-[320px] bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] [background-size:24px_24px] shadow-inner mb-6 max-w-7xl mx-auto overflow-visible">
                           {slots.map((slotEntries, slotIdx) => {
                             if (slotEntries.length === 0) {
                               return <div key={`empty-slot-${slotIdx}`} className="w-60 h-60 hidden lg:block" />;
@@ -596,11 +596,10 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                                       key={entry.id}
                                       onClick={() => setClickedCardId(entry.id)}
                                       style={style}
-                                      className={`w-60 h-60 flex flex-col justify-between p-5 rounded-2xl border select-none transition-all duration-300 cursor-pointer hover:scale-102 hover:shadow-lg ${
-                                        isFocused 
-                                          ? `${pastelClass} ring-2 ring-orange-500/20 shadow-xl scale-105` 
+                                      className={`w-60 h-60 flex flex-col justify-between p-5 rounded-2xl border select-none transition-all duration-300 cursor-pointer hover:scale-102 hover:shadow-lg ${isFocused
+                                          ? `${pastelClass} ring-2 ring-orange-500/20 shadow-xl scale-105`
                                           : `${pastelClass} shadow-md`
-                                      }`}
+                                        }`}
                                     >
                                       {/* Simulated Tape strip */}
                                       <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-white/35 backdrop-blur-[1px] border border-white/20 shadow-sm rotate-[-1.5deg] z-10" />
@@ -624,7 +623,6 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
 
                                       {/* Card Footer */}
                                       <div className="flex justify-between items-center text-[8px] font-bold tracking-wider uppercase opacity-55">
-                                        <span>notion log</span>
                                         <span>
                                           {filteredEntries.findIndex(e => e.id === entry.id) + 1} of {filteredEntries.length}
                                         </span>
@@ -682,7 +680,6 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                           </div>
 
                           <div className="flex justify-between items-center text-[9px] font-bold tracking-wider uppercase opacity-55">
-                            <span>notion log</span>
                             <span>
                               {index + 1} of {filteredEntries.length}
                             </span>
