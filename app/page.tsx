@@ -13,13 +13,6 @@ const BlogHomepage = () => {
       tags: ["philosophy", "life", "creativity"],
     },
     {
-      title: "Pattern Detection in Machine Learning",
-      excerpt: "Machine Learning is just about pattern detection",
-      date: "February 8, 2025",
-      slug: "ml",
-      tags: ["technology", "ML", "science"],
-    },
-    {
       title: "Nature is Dissipative",
       excerpt:
         "Waste may mean different to different people. To vegans, rearing animals for food is a waste (of life); to non-vegans, life living as a vegan itself is a waste...",
@@ -65,7 +58,7 @@ const BlogHomepage = () => {
             {recentPosts.map((post, index) => (
               <article key={index} className="group">
                 <Link href={`/blog/${post.slug}`} className="block">
-                  
+
                   <div className="space-y-2">
                     <span className="text-sm text-gray-500">{post.date}</span>
                     <h3 className="text-2xl font-bold text-gray-900 group-hover:text-orange-500 transition-colors">
