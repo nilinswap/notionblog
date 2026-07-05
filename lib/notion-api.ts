@@ -394,12 +394,22 @@ export async function getBlogPageProps(pageId: string) {
     };
 }
 
+export type SubItem = {
+    imageUrl: string;
+    title: string;
+    story: string;
+    date?: string;
+};
+
 export type AlbumItem = {
     id: string;
     title: string;
     imageUrl: string;
     story: string;
     date?: string;
+    images: string[];
+    subitems?: SubItem[];
+    parentId?: string | null;
 };
 
 function extractGoogleDriveFileId(url: string): string | null {
@@ -483,7 +493,8 @@ export async function getAlbumItems(): Promise<AlbumItem[]> {
                 imageUrl = await convertToDirectImageUrl(imageUrl);
                 const story = (getPropertyValue(page, "Story") || getPropertyValue(page, "Description") || "") as string;
                 const date = (getPropertyValue(page, "Date") || getPropertyValue(page, "Published") || "") as string;
-                console.log(`asdfadf page "${title}" (${page.id}): imageUrl="${imageUrl}", story="${story}", date="${date}"`);
+                const parentId = getParentPageId(page);
+                console.log(`asdfadf page "${title}" (${page.id}): imageUrl="${imageUrl}", story="${story}", date="${date}", parentId="${parentId}"`);
                 if (imageUrl) {
                     albumItems.push({
                         id: page.id,
@@ -491,14 +502,52 @@ export async function getAlbumItems(): Promise<AlbumItem[]> {
                         imageUrl,
                         story,
                         date,
+                        parentId,
+                        images: [imageUrl],
                     });
                 }
             }
 
             cursor = typedResponse.next_cursor || undefined;
         } while (cursor);
-        console.log("Fetched album items:", albumItems);
-        return albumItems;
+        console.log("Fetched raw album items:", albumItems);
+
+        // Group child items into their parents
+        const parents = albumItems.filter((item) => !item.parentId);
+        const children = albumItems.filter((item) => item.parentId);
+
+        const fullyMappedAlbums: AlbumItem[] = parents.map((parent) => {
+            const childItems = children
+                .filter((child) => child.parentId === parent.id);
+
+            const subitems: SubItem[] = [
+                {
+                    imageUrl: parent.imageUrl,
+                    title: parent.title,
+                    story: parent.story,
+                    date: parent.date,
+                },
+                ...childItems.map((child) => ({
+                    imageUrl: child.imageUrl,
+                    title: child.title,
+                    story: child.story,
+                    date: child.date,
+                })),
+            ];
+
+            return {
+                id: parent.id,
+                title: parent.title,
+                imageUrl: parent.imageUrl,
+                story: parent.story,
+                date: parent.date,
+                images: subitems.map((item) => item.imageUrl),
+                subitems,
+            };
+        });
+
+        console.log("Grouped album items:", fullyMappedAlbums);
+        return fullyMappedAlbums;
     } catch (error) {
         console.error("Error fetching album items:", error);
         return [];

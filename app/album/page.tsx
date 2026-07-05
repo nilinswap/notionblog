@@ -44,6 +44,8 @@ export default async function AlbumPage() {
                 <AlbumCard
                   title={item.title}
                   imageUrl={item.imageUrl}
+                  images={item.images}
+                  subitems={item.subitems}
                   story={item.story}
                   date={item.date}
                 />
