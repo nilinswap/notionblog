@@ -225,7 +225,7 @@ function NotionImage({ value }: { value: NotionRecord }) {
   if (!src) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-        Image unavailable (missing URL from Notion)
+        Image unavailable (missing URL)
       </div>
     );
   }
@@ -355,9 +355,8 @@ function NotionTable({ block, value }: { block: NotionBlock; value: NotionRecord
                   return (
                     <CellTag
                       key={`${row.id}-${cellIndex}`}
-                      className={`border-r border-slate-200 px-3 py-2 align-top last:border-r-0 ${
-                        isHeaderCell ? "bg-slate-50 font-semibold text-slate-900" : "text-slate-700"
-                      }`}
+                      className={`border-r border-slate-200 px-3 py-2 align-top last:border-r-0 ${isHeaderCell ? "bg-slate-50 font-semibold text-slate-900" : "text-slate-700"
+                        }`}
                     >
                       {renderRichText(cell)}
                     </CellTag>
