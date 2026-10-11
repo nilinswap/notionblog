@@ -1,4 +1,5 @@
 import { cache } from "react";
+import crypto from "crypto";
 import notion from "./notion";
 
 type NotionAnnotations = {
@@ -55,12 +56,16 @@ export type BlogPostSummary = {
     date: string | null;
     tags: string[];
     parentId: string | null;
+    status: string | null;
+    isDraft: boolean;
+    previewToken: string;
 };
 
 type BlogIndex = {
     byId: Map<string, BlogPostSummary>;
     bySlug: Map<string, NotionPage>;
     roots: BlogPostSummary[];
+    draftRoots: BlogPostSummary[];
 };
 
 const PARENT_PROPERTY_NAMES = ["Parent item", "Parent Item", "Parent"];
@@ -106,8 +111,15 @@ function getURLProperty(page: NotionPage, propertyName: string) {
 }
 
 function getPropertyValue(page: NotionPage, propertyName: string) {
-    const property = page.properties?.[propertyName] as NotionProperty | undefined;
-    console.log(`Getting property "${propertyName}" from page "${page.id}":`, property, typeof property);
+    if (!page.properties) return null;
+    let property = page.properties[propertyName] as NotionProperty | undefined;
+    if (!property) {
+        const lower = propertyName.toLowerCase();
+        const foundKey = Object.keys(page.properties).find((k) => k.toLowerCase() === lower);
+        if (foundKey) {
+            property = page.properties[foundKey] as NotionProperty | undefined;
+        }
+    }
     if (!property || typeof property !== "object") return null;
 
     switch (property.type) {
@@ -134,6 +146,101 @@ function getPropertyValue(page: NotionPage, propertyName: string) {
         default:
             return null;
     }
+}
+
+export function isPostPublished(page: NotionPage): boolean {
+    const status = getPropertyValue(page, "Status");
+    return typeof status === "string" && status.trim().toLowerCase() === "published";
+}
+
+export function isPostDraft(page: NotionPage): boolean {
+    return !isPostPublished(page);
+}
+
+export function getCustomPreviewToken(page: NotionPage): string | null {
+    const customProps = [
+        "Preview Token",
+        "PreviewToken",
+        "Draft Token",
+        "DraftToken",
+        "Secret",
+        "Share Key",
+        "ShareKey",
+        "Preview Key",
+        "PreviewKey",
+        "Token",
+    ];
+    for (const propName of customProps) {
+        const val = getPropertyValue(page, propName);
+        if (typeof val === "string" && val.trim().length > 0) {
+            return val.trim();
+        }
+    }
+    return null;
+}
+
+export function getGeneratedPreviewToken(pageId: string): string {
+    const cleanId = pageId.replace(/-/g, "").toLowerCase();
+    const secret =
+        process.env.DRAFT_SECRET ||
+        process.env.BLOG_PREVIEW_SECRET ||
+        process.env.NOTION_ACCESS_TOKEN ||
+        process.env.NOTION_BLOG_DATASOURCE_ID ||
+        "notionblog-draft-salt";
+    return crypto.createHmac("sha256", secret).update(cleanId).digest("hex").slice(0, 16);
+}
+
+export function getDraftPreviewToken(pageId: string, page?: NotionPage): string {
+    if (page) {
+        const custom = getCustomPreviewToken(page);
+        if (custom) return custom;
+    }
+    return getGeneratedPreviewToken(pageId);
+}
+
+export function isDraftTokenValid(page: NotionPage, tokenToCheck: string | null | undefined): boolean {
+    if (!tokenToCheck || typeof tokenToCheck !== "string") {
+        return false;
+    }
+    const token = tokenToCheck.trim();
+    if (!token) return false;
+
+    // 1. Check custom token from Notion properties if present
+    const customToken = getCustomPreviewToken(page);
+    if (customToken && customToken.toLowerCase() === token.toLowerCase()) {
+        return true;
+    }
+
+    // 2. Check generated deterministic HMAC token
+    const generatedToken = getGeneratedPreviewToken(page.id);
+    if (generatedToken.toLowerCase() === token.toLowerCase()) {
+        return true;
+    }
+
+    // 3. Check Notion Page ID (with or without dashes)
+    const cleanPageId = page.id.replace(/-/g, "").toLowerCase();
+    const cleanInput = token.replace(/-/g, "").toLowerCase();
+    if (cleanInput === cleanPageId) {
+        return true;
+    }
+
+    // 4. Check global/master secret from environment variables if configured
+    const masterSecret = process.env.DRAFT_SECRET || process.env.BLOG_PREVIEW_SECRET;
+    if (masterSecret && token === masterSecret) {
+        return true;
+    }
+
+    return false;
+}
+
+export function isPostAllowed(page: NotionPage, tokenToCheck?: string | null): boolean {
+    if (isPostPublished(page)) {
+        return true;
+    }
+    if (tokenToCheck && isDraftTokenValid(page, tokenToCheck)) {
+        return true;
+    }
+    return false;
 }
 
 function getParentPropertyName(page: NotionPage) {
@@ -163,6 +270,7 @@ function getParentPageId(page: NotionPage) {
 }
 
 function pageToSummary(page: NotionPage, slug: string): BlogPostSummary {
+    const isDraft = isPostDraft(page);
     return {
         id: page.id,
         title: (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "Untitled") as string,
@@ -172,6 +280,9 @@ function pageToSummary(page: NotionPage, slug: string): BlogPostSummary {
         date: (getPropertyValue(page, "Published") as string) || (getPropertyValue(page, "Date") as string) || null,
         tags: (getPropertyValue(page, "Tags") as string[]) || [],
         parentId: getParentPageId(page),
+        status: (getPropertyValue(page, "Status") as string) || null,
+        isDraft,
+        previewToken: getDraftPreviewToken(page.id, page),
     };
 }
 
@@ -200,12 +311,7 @@ async function queryAllDatasourcePages() {
         cursor = typedResponse.next_cursor || undefined;
     } while (cursor);
 
-    return pages.filter((page) => {
-        const status = getPropertyValue(page, "Status");
-        const isLocal = process.env.NODE_ENV === "development";
-        if (isLocal) return true;
-        return typeof status === "string" && status.toLowerCase() === "published";
-    });
+    return pages;
 }
 
 function buildHierarchicalSlug(pageId: string, segmentById: Map<string, string>, parentById: Map<string, string | null>) {
@@ -244,9 +350,12 @@ const getBlogIndex = cache(async (): Promise<BlogIndex> => {
         bySlug.set(slug, page);
     }
 
-    const roots = [...byId.values()].filter((post) => !post.parentId);
+    // Only published top-level posts appear in the public listing
+    const roots = [...byId.values()].filter((post) => !post.parentId && !post.isDraft);
+    // Draft top-level posts (for private author preview)
+    const draftRoots = [...byId.values()].filter((post) => !post.parentId && post.isDraft);
 
-    return { byId, bySlug, roots };
+    return { byId, bySlug, roots, draftRoots };
 });
 
 export async function getPage(pageId: string) {
@@ -307,17 +416,33 @@ export async function queryBlogPosts() {
     return roots;
 }
 
-export async function getChildBlogPosts(parentPageId: string) {
-    const { byId } = await getBlogIndex();
-    return [...byId.values()].filter((post) => post.parentId === parentPageId);
+export async function queryDraftBlogPosts() {
+    const { draftRoots } = await getBlogIndex();
+    return draftRoots;
 }
 
-export async function getBlogPostBySlug(slug: string) {
+export async function getChildBlogPosts(parentPageId: string, previewToken?: string | null) {
+    const { byId } = await getBlogIndex();
+    const masterSecret = process.env.DRAFT_SECRET || process.env.BLOG_PREVIEW_SECRET;
+    return [...byId.values()].filter((post) => {
+        if (post.parentId !== parentPageId) return false;
+        if (!post.isDraft) return true;
+        if (previewToken && (post.previewToken === previewToken || (masterSecret && previewToken === masterSecret))) {
+            return true;
+        }
+        return false;
+    });
+}
+
+export async function getBlogPostBySlug(slug: string, previewToken?: string | null) {
     const normalizedSlug = normalizeSlug(slug);
     const { bySlug } = await getBlogIndex();
     const fromIndex = bySlug.get(normalizedSlug);
     if (fromIndex) {
-        return fromIndex;
+        if (isPostAllowed(fromIndex, previewToken)) {
+            return fromIndex;
+        }
+        return null;
     }
 
     const datasourceId = process.env.NOTION_BLOG_DATASOURCE_ID;
@@ -345,14 +470,14 @@ export async function getBlogPostBySlug(slug: string) {
             const pageSlug = normalizeSlug(
                 (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || pageSegmentSlug(page) || "") as string,
             );
-            const status = getPropertyValue(page, "Status");
-            const isLocal = process.env.NODE_ENV === "development";
-            const isAllowed = isLocal || (typeof status === "string" && status.toLowerCase() === "published");
-            return isAllowed && (pageSlug === lastSegment || pageSlug === normalizedSlug);
+            return (pageSlug === lastSegment || pageSlug === normalizedSlug);
         });
 
         if (result) {
-            return result;
+            if (isPostAllowed(result, previewToken)) {
+                return result;
+            }
+            return null;
         }
     }
 
@@ -362,18 +487,20 @@ export async function getBlogPostBySlug(slug: string) {
     });
     const typedSearch = searchResponse as NotionSearchResponse;
 
-    return typedSearch.results.find((page) => {
+    const found = typedSearch.results.find((page) => {
         const pageSlug = normalizeSlug(
             (getPropertyValue(page, "Slug") || getPropertyValue(page, "Path") || pageSegmentSlug(page) || "") as string,
         );
-        const status = getPropertyValue(page, "Status");
-        const isLocal = process.env.NODE_ENV === "development";
-        const isAllowed = isLocal || (typeof status === "string" && status.toLowerCase() === "published");
-        if (!isAllowed) return false;
         if (pageSlug === normalizedSlug) return true;
         const title = normalizeSlug((getPropertyValue(page, "Title") || "") as string);
         return title === normalizedSlug;
     });
+
+    if (found && isPostAllowed(found, previewToken)) {
+        return found;
+    }
+
+    return null;
 }
 
 export async function getBlogPageProps(pageId: string) {
@@ -383,6 +510,9 @@ export async function getBlogPageProps(pageId: string) {
     const { byId } = await getBlogIndex();
     const summary = byId.get(pageId);
 
+    const isDraft = isPostDraft(typedPage);
+    const previewToken = getDraftPreviewToken(pageId, typedPage);
+
     return {
         page,
         blocks,
@@ -391,6 +521,9 @@ export async function getBlogPageProps(pageId: string) {
         date: (getPropertyValue(typedPage, "Published") as string) || (getPropertyValue(typedPage, "Date") as string) || null,
         tags: (getPropertyValue(typedPage, "Tags") as string[]) || [],
         slug: summary?.slug || pageSegmentSlug(typedPage),
+        status: (getPropertyValue(typedPage, "Status") as string) || null,
+        isDraft,
+        previewToken,
     };
 }
 

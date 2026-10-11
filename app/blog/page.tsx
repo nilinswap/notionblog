@@ -1,12 +1,30 @@
 import Link from "next/link";
 import BlogContainer from "./blog-container";
-import { queryBlogPosts } from "@/lib/notion-api";
+import { queryBlogPosts, queryDraftBlogPosts } from "@/lib/notion-api";
+import DraftAuthorSection from "./draft-author-section";
 
 export const dynamic = "force-dynamic";
 
-export default async function BlogListing() {
+type PageProps = {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function BlogListing(props: PageProps) {
+  const searchParams = props?.searchParams ? await props.searchParams : {};
   const posts = await queryBlogPosts();
   const isConfigured = Boolean(process.env.NOTION_BLOG_DATASOURCE_ID);
+
+  const rawSecret = searchParams?.secret || searchParams?.preview || searchParams?.token;
+  const secret = typeof rawSecret === "string" ? rawSecret : Array.isArray(rawSecret) ? rawSecret[0] : null;
+  const masterSecret = process.env.DRAFT_SECRET || process.env.BLOG_PREVIEW_SECRET;
+  const isDev = process.env.NODE_ENV === "development";
+
+  const showAuthorDrafts = Boolean(
+    (masterSecret && secret === masterSecret) ||
+    (isDev && (searchParams?.drafts === "true" || searchParams?.preview === "true"))
+  );
+
+  const draftPosts = showAuthorDrafts ? await queryDraftBlogPosts() : [];
 
   return (
     <BlogContainer>
@@ -17,7 +35,24 @@ export default async function BlogListing() {
             Top-level posts from your Notion database. Sub-items use hierarchical URLs
             (title plus last 4 characters of the page id), like Notion page links.
           </p>
+          {isDev ? (
+            <p className="text-xs text-slate-400">
+              {showAuthorDrafts ? (
+                <Link href="/blog" className="text-amber-600 underline hover:text-amber-700">
+                  Hide author draft view
+                </Link>
+              ) : (
+                <Link href="/blog?drafts=true" className="underline hover:text-orange-500">
+                  Author view: preview unpublished drafts
+                </Link>
+              )}
+            </p>
+          ) : null}
         </div>
+
+        {draftPosts.length > 0 ? (
+          <DraftAuthorSection drafts={draftPosts} />
+        ) : null}
 
         {!isConfigured ? (
           <div className="rounded-xl border border-orange-200 bg-orange-50 p-6 text-orange-900">
@@ -74,3 +109,4 @@ export default async function BlogListing() {
     </BlogContainer>
   );
 }
+
