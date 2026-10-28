@@ -23,15 +23,55 @@ const MONTH_NAMES = [
 ];
 
 const monthNameToNum = (name: string): string => {
+  if (!name) return "01";
   const normalized = name.trim().toLowerCase();
   const index = MONTH_NAMES.findIndex(
     (m) => m.toLowerCase() === normalized || m.toLowerCase().slice(0, 3) === normalized.slice(0, 3)
   );
-  if (index === -1) return "07";
+  if (index === -1) {
+    const num = parseInt(normalized, 10);
+    if (!isNaN(num) && num >= 1 && num <= 12) {
+      return String(num).padStart(2, "0");
+    }
+    return "01";
+  }
   return String(index + 1).padStart(2, "0");
 };
 
+const getEntryTimestamp = (entry: TILEntry): number => {
+  const year = parseInt(entry.year, 10) || 0;
+  const month = parseInt(monthNameToNum(entry.month), 10) || 1;
+  const day = parseInt(entry.day, 10) || 1;
+  return year * 10000 + month * 100 + day;
+};
 
+const getLatestDateInfo = (entries: TILEntry[]) => {
+  if (!entries || entries.length === 0) {
+    const now = new Date();
+    return {
+      year: String(now.getFullYear()),
+      month: MONTH_NAMES[now.getMonth()],
+      day: String(now.getDate()),
+    };
+  }
+
+  let latest = entries[0];
+  let latestTs = getEntryTimestamp(latest);
+
+  for (let i = 1; i < entries.length; i++) {
+    const ts = getEntryTimestamp(entries[i]);
+    if (ts > latestTs) {
+      latest = entries[i];
+      latestTs = ts;
+    }
+  }
+
+  return {
+    year: latest.year,
+    month: latest.month,
+    day: String(parseInt(latest.day, 10)),
+  };
+};
 
 const getCalendarDays = (yearStr: string, monthStr: string) => {
   const year = parseInt(yearStr, 10);
@@ -60,11 +100,22 @@ const getCalendarDays = (yearStr: string, monthStr: string) => {
 };
 
 export default function TILContainer({ initialEntries }: TILContainerProps) {
-  // Default values based on the current local date (2026-07-05)
-  const [activeMode, setActiveMode] = useState<"year" | "month" | "day">("year");
-  const [selectedYear, setSelectedYear] = useState<string>("2026");
-  const [selectedMonth, setSelectedMonth] = useState<string>("July");
-  const [selectedDay, setSelectedDay] = useState<string>("5");
+  const latestInfo = useMemo(() => getLatestDateInfo(initialEntries), [initialEntries]);
+
+  // Default to latest date, latest month, and latest year in day mode
+  const [activeMode, setActiveMode] = useState<"year" | "month" | "day">("day");
+  const [selectedYear, setSelectedYear] = useState<string>(() => latestInfo.year);
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => latestInfo.month);
+  const [selectedDay, setSelectedDay] = useState<string>(() => latestInfo.day);
+
+  useEffect(() => {
+    if (initialEntries && initialEntries.length > 0) {
+      const latest = getLatestDateInfo(initialEntries);
+      setSelectedYear(latest.year);
+      setSelectedMonth(latest.month);
+      setSelectedDay(latest.day);
+    }
+  }, [initialEntries]);
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [enteringIndex, setEnteringIndex] = useState<number | null>(null);
@@ -72,10 +123,48 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
   const [clickedCardId, setClickedCardId] = useState<string | null>(null);
 
+  const handleYearChange = (newYear: string) => {
+    setSelectedYear(newYear);
+    const yearEntries = initialEntries.filter((e) => e.year === newYear);
+    if (yearEntries.length > 0) {
+      let latestInYear = yearEntries[0];
+      let maxTs = getEntryTimestamp(latestInYear);
+      for (const entry of yearEntries) {
+        const ts = getEntryTimestamp(entry);
+        if (ts > maxTs) {
+          maxTs = ts;
+          latestInYear = entry;
+        }
+      }
+      setSelectedMonth(latestInYear.month);
+      setSelectedDay(String(parseInt(latestInYear.day, 10)));
+    }
+  };
+
+  const handleMonthChange = (newMonth: string) => {
+    setSelectedMonth(newMonth);
+    const monthEntries = initialEntries.filter(
+      (e) => e.year === selectedYear && e.month.toLowerCase() === newMonth.toLowerCase()
+    );
+    if (monthEntries.length > 0) {
+      let maxDay = parseInt(monthEntries[0].day, 10);
+      for (const entry of monthEntries) {
+        const d = parseInt(entry.day, 10);
+        if (d > maxDay) maxDay = d;
+      }
+      setSelectedDay(String(maxDay));
+    } else {
+      setSelectedDay("1");
+    }
+  };
+
   const entriesCountPerDay = useMemo(() => {
     const counts: Record<string, number> = {};
     initialEntries.forEach((entry) => {
-      if (entry.year === selectedYear && entry.month === selectedMonth) {
+      if (
+        entry.year === selectedYear &&
+        entry.month.toLowerCase() === selectedMonth.toLowerCase()
+      ) {
         const d = String(parseInt(entry.day, 10));
         counts[d] = (counts[d] || 0) + 1;
       }
@@ -90,17 +179,19 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
   // Get all unique years in descending order
   const allYears = useMemo(() => {
     const years = new Set(initialEntries.map((e) => e.year));
-    // Ensure "2026" is always present as a fallback option even if no entries exist yet
-    years.add("2026");
-    return Array.from(years).sort((a, b) => b.localeCompare(a));
+    if (years.size === 0) {
+      years.add(String(new Date().getFullYear()));
+    }
+    return Array.from(years).sort((a, b) => parseInt(b, 10) - parseInt(a, 10));
   }, [initialEntries]);
 
   // Get all unique months for the selected year in logical/calendar order if possible
   const allMonths = useMemo(() => {
-    const months = new Set(
-      initialEntries.filter((e) => e.year === selectedYear).map((e) => e.month)
-    );
-    months.add("July"); // Ensure current month is available
+    const yearEntries = initialEntries.filter((e) => e.year === selectedYear);
+    const months = new Set(yearEntries.map((e) => e.month));
+    if (months.size === 0) {
+      months.add(MONTH_NAMES[new Date().getMonth()]);
+    }
 
     const monthOrder: Record<string, number> = {
       january: 1, jan: 1,
@@ -130,12 +221,15 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
       if (activeMode === "year") {
         return entry.year === selectedYear;
       } else if (activeMode === "month") {
-        return entry.year === selectedYear && entry.month === selectedMonth;
+        return (
+          entry.year === selectedYear &&
+          entry.month.toLowerCase() === selectedMonth.toLowerCase()
+        );
       } else {
         return (
           entry.year === selectedYear &&
-          entry.month === selectedMonth &&
-          entry.day === selectedDay
+          entry.month.toLowerCase() === selectedMonth.toLowerCase() &&
+          parseInt(entry.day, 10) === parseInt(selectedDay, 10)
         );
       }
     });
@@ -347,7 +441,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                 <select
                   id="year-select"
                   value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
+                  onChange={(e) => handleYearChange(e.target.value)}
                   className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 appearance-none cursor-pointer pr-10"
                 >
                   {allYears.map((year) => (
@@ -374,10 +468,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                   <select
                     id="month-year-select"
                     value={selectedYear}
-                    onChange={(e) => {
-                      setSelectedYear(e.target.value);
-                      setActiveMode("month");
-                    }}
+                    onChange={(e) => handleYearChange(e.target.value)}
                     className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 appearance-none cursor-pointer pr-10"
                   >
                     {allYears.map((year) => (
@@ -400,10 +491,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
                   <select
                     id="month-select"
                     value={selectedMonth}
-                    onChange={(e) => {
-                      setSelectedMonth(e.target.value);
-                      setActiveMode("month");
-                    }}
+                    onChange={(e) => handleMonthChange(e.target.value)}
                     className="block w-full rounded-xl border border-slate-200 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 text-slate-800 bg-white font-semibold px-4 py-3 appearance-none cursor-pointer pr-10"
                   >
                     {allMonths.map((month) => (
@@ -452,7 +540,7 @@ export default function TILContainer({ initialEntries }: TILContainerProps) {
 
                   const dayStr = String(dayNum);
                   const count = entriesCountPerDay[dayStr] || 0;
-                  const isSelected = activeMode === "day" && selectedDay === dayStr;
+                  const isSelected = activeMode === "day" && parseInt(selectedDay, 10) === dayNum;
 
                   return (
                     <button

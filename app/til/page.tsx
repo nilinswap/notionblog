@@ -21,6 +21,22 @@ type TILEntry = {
   year: string;
 };
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+function normalizeMonth(text: string): string {
+  const normalized = text.trim().toLowerCase();
+  const idx = MONTH_NAMES.findIndex(
+    (m) => m.toLowerCase() === normalized || m.toLowerCase().slice(0, 3) === normalized.slice(0, 3)
+  );
+  if (idx !== -1) return MONTH_NAMES[idx];
+  const num = parseInt(normalized, 10);
+  if (!isNaN(num) && num >= 1 && num <= 12) return MONTH_NAMES[num - 1];
+  return text.trim();
+}
+
 function getBlockText(block: NotionBlock): string {
   const value = block[block.type] as Record<string, unknown> | undefined;
   if (value && Array.isArray(value.rich_text)) {
@@ -60,12 +76,12 @@ export default async function TILPage() {
         for (const monthBlock of yearBlock.children) {
           const monthText = getBlockText(monthBlock).trim();
           if (monthText) {
-            const month = monthText;
+            const month = normalizeMonth(monthText);
             if (monthBlock.children) {
               for (const dayBlock of monthBlock.children) {
                 const dayText = getBlockText(dayBlock).trim();
                 if (/^\d{1,2}$/.test(dayText)) {
-                  const day = dayText;
+                  const day = String(parseInt(dayText, 10));
                   if (dayBlock.children) {
                     for (const entryBlock of dayBlock.children) {
                       const entryText = getBlockText(entryBlock).trim();
