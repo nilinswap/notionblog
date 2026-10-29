@@ -551,19 +551,30 @@ function extractGoogleDriveFileId(url: string): string | null {
     return fileIdMatch ? fileIdMatch[1] : null;
 }
 
+const googlePhotosCache = new Map<string, string>();
+
 async function resolveGooglePhotosImageUrl(shareUrl: string): Promise<string | null> {
+    if (googlePhotosCache.has(shareUrl)) {
+        return googlePhotosCache.get(shareUrl)!;
+    }
+
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
         const response = await fetch(shareUrl, {
             redirect: "follow",
+            signal: controller.signal,
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             },
         });
+        clearTimeout(timeoutId);
 
         const html = await response.text();
 
-        // Find lh3.googleusercontent.com URLs embedded in the page
-        const matches = html.match(/https:\/\/lh3\.googleusercontent\.com\/[^\\"'<>\s]+/g);
+        // Find googleusercontent.com URLs embedded in the page
+        const matches = html.match(/https:\/\/[a-zA-Z0-9-]+\.googleusercontent\.com\/[^\\"'<>\s]+/g);
 
         if (!matches?.length) {
             return null;
@@ -571,7 +582,9 @@ async function resolveGooglePhotosImageUrl(shareUrl: string): Promise<string | n
 
         // Use the first match and normalize to original size
         const url = matches[0];
-        return url.replace(/=w\d+(-h\d+)?(-[^?]*)?(\?.*)?$/, "=s0");
+        const directUrl = url.replace(/=w\d+(-h\d+)?(-[^?]*)?(\?.*)?$/, "=s0");
+        googlePhotosCache.set(shareUrl, directUrl);
+        return directUrl;
     } catch (error) {
         console.error("Error resolving Google Photos URL:", error);
         return null;
@@ -619,17 +632,17 @@ export async function getAlbumItems(): Promise<AlbumItem[]> {
             });
             const typedResponse = response as unknown as NotionQueryResponse;
 
-            for (const page of typedResponse.results) {
+            const pagePromises = typedResponse.results.map(async (page) => {
                 const title = (getPropertyValue(page, "Title") || getPropertyValue(page, "Name") || "Untitled") as string;
                 let imageUrl = (getURLProperty(page, "ImageURL") || getPropertyValue(page, "Image") || "") as string;
-                // Convert Google Drive URLs to direct image URLs
+                // Convert Google Drive / Photos URLs to direct image URLs
                 imageUrl = await convertToDirectImageUrl(imageUrl);
                 const story = (getPropertyValue(page, "Story") || getPropertyValue(page, "Description") || "") as string;
                 const date = (getPropertyValue(page, "Date") || getPropertyValue(page, "Published") || "") as string;
                 const parentId = getParentPageId(page);
-                console.log(`asdfadf page "${title}" (${page.id}): imageUrl="${imageUrl}", story="${story}", date="${date}", parentId="${parentId}"`);
+
                 if (imageUrl) {
-                    albumItems.push({
+                    return {
                         id: page.id,
                         title,
                         imageUrl,
@@ -637,8 +650,14 @@ export async function getAlbumItems(): Promise<AlbumItem[]> {
                         date,
                         parentId,
                         images: [imageUrl],
-                    });
+                    };
                 }
+                return null;
+            });
+
+            const resolvedPages = await Promise.all(pagePromises);
+            for (const item of resolvedPages) {
+                if (item) albumItems.push(item);
             }
 
             cursor = typedResponse.next_cursor || undefined;

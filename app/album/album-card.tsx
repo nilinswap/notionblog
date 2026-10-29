@@ -62,26 +62,36 @@ export default function AlbumCard({ title, imageUrl, subitems = [], story, date 
     }
   };
 
-  const slideList = subitems.length > 0
-    ? subitems
-    : [{ imageUrl, title, story, date }];
+  const validSubitems = (subitems || []).filter((item) => Boolean(item && item.imageUrl));
+  const slideList = validSubitems.length > 0
+    ? validSubitems
+    : imageUrl
+      ? [{ imageUrl, title, story, date }]
+      : [];
 
-  const currentSlide = slideList[activeImgIndex];
+  const currentSlide = slideList[activeImgIndex] || slideList[0] || {
+    imageUrl: imageUrl || "",
+    title: title || "",
+    story: story || "",
+    date,
+  };
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (slideList.length <= 1) return;
     isProgrammaticScroll.current = true;
     setActiveImgIndex((prev) => (prev - 1 + slideList.length) % slideList.length);
   };
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (slideList.length <= 1) return;
     isProgrammaticScroll.current = true;
     setActiveImgIndex((prev) => (prev + 1) % slideList.length);
   };
 
   const handleScroll = () => {
-    if (scrollRef.current) {
+    if (scrollRef.current && slideList.length > 0) {
       const { scrollLeft, clientWidth } = scrollRef.current;
       if (clientWidth > 0) {
         const targetScrollLeft = activeImgIndex * clientWidth;
@@ -121,16 +131,17 @@ export default function AlbumCard({ title, imageUrl, subitems = [], story, date 
       onClick={handleClick}
     >
       {/* Spacer Image to define the dynamic masonry height based on first image */}
-      <div className="w-full h-auto select-none pointer-events-none opacity-0">
-        <Image
-          src={slideList[0].imageUrl}
-          alt={slideList[0].title}
-          width={400}
-          height={600}
-          className="w-full h-auto"
-          priority
-        />
-      </div>
+      {slideList[0]?.imageUrl && (
+        <div className="w-full h-auto select-none pointer-events-none opacity-0">
+          <Image
+            src={slideList[0].imageUrl}
+            alt={slideList[0].title || title || "Album image"}
+            width={400}
+            height={600}
+            className="w-full h-auto"
+          />
+        </div>
+      )}
 
       {/* Slidable Carousel Container */}
       <div className="absolute inset-0 w-full h-full overflow-hidden">
@@ -153,13 +164,15 @@ export default function AlbumCard({ title, imageUrl, subitems = [], story, date 
                 transform: isHovered ? "scale(1.05)" : "scale(1)",
               }}
             >
-              <Image
-                src={slide.imageUrl}
-                alt={`${slide.title} - image ${idx + 1}`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              />
+              {slide.imageUrl && (
+                <Image
+                  src={slide.imageUrl}
+                  alt={`${slide.title || title || "Album image"} - image ${idx + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
+              )}
             </div>
           ))}
         </div>
@@ -234,7 +247,7 @@ export default function AlbumCard({ title, imageUrl, subitems = [], story, date 
         }}
       >
         <div style={{ textShadow: "0 2px 4px rgba(0,0,0,0.8)" }}>
-          <h3 className="text-white text-base font-semibold mb-0.5">{currentSlide.title}</h3>
+          <h3 className="text-white text-base font-semibold mb-0.5">{currentSlide.title || title}</h3>
           {currentSlide.date && (
             <p className="text-gray-300 text-[10px] font-semibold mb-1 uppercase tracking-wider">
               {formatDate(currentSlide.date)}
@@ -248,7 +261,7 @@ export default function AlbumCard({ title, imageUrl, subitems = [], story, date 
               scrollbarColor: "rgba(255,255,255,0.2) transparent",
             }}
           >
-            {currentSlide.story}
+            {currentSlide.story || story}
           </p>
         </div>
       </div>

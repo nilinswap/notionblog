@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { getAlbumItems } from "@/lib/notion-api";
 import AlbumCard from "./album-card";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Album",

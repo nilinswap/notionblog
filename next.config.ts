@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 's3.us-west-2.amazonaws.com' },
       { protocol: 'https', hostname: 'drive.google.com' },
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: '*.googleusercontent.com' },
+      { protocol: 'https', hostname: 'photos.app.goo.gl' },
+      { protocol: 'https', hostname: '*.google.com' },
     ],
   },
 };
