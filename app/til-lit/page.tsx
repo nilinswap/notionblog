@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import { getTILPage, getBlockTree } from "@/lib/notion-api";
 import BlogContainer from "@/app/blog/blog-container";
 import Link from "next/link";
 import TILContainer from "./til-container";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 type NotionBlock = {
   id: string;
