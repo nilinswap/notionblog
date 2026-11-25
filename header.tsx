@@ -39,12 +39,6 @@ const Header = () => {
               >
                 Blogs
               </Link>
-              <Link
-                href="/til"
-                className="text-gray-600 hover:text-orange-500 transition-colors font-medium"
-              >
-                TIL
-              </Link>
             </div>
           </nav>
         </div>
